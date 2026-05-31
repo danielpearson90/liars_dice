@@ -21,6 +21,10 @@ laptop — no installs, no accounts.
   - Wrong → **you** lose a die.
 - Lose your last die and you're out. **Last player standing wins.**
 
+Sound effects (dice rolls, bids, challenges, wins/losses) are synthesized in the
+browser with the Web Audio API — no files to download. Toggle them with the
+🔊 button in the top-right corner.
+
 ## Run it locally
 
 Requires Node.js 18+.

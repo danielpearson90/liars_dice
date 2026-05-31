@@ -37,6 +37,14 @@ h2 { text-align: center; }
 .hint { color: var(--muted); text-align: center; font-size: .9rem; }
 .hidden { display: none !important; }
 
+/* Sound toggle */
+.mute {
+  position: fixed; top: 12px; right: 12px; z-index: 40;
+  width: 42px; height: 42px; padding: 0; font-size: 1.2rem;
+  border-radius: 50%; background: var(--panel); border: 1px solid #2b3654;
+}
+.mute:hover { filter: brightness(1.15); }
+
 .card {
   background: var(--panel);
   border: 1px solid #2b3654;

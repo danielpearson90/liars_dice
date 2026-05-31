@@ -1,6 +1,185 @@
 /* global io */
 const socket = io();
 
+// --- sound effects ---------------------------------------------------------
+// All effects are synthesized with the Web Audio API, so there are no audio
+// files to ship and everything works offline. Browsers require a user gesture
+// before audio can start, so the context is (re)started on the first click.
+const Sound = (() => {
+  let ctx = null;
+  let muted = localStorage.getItem('ld_muted') === '1';
+
+  function ensure() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+
+  // A single enveloped oscillator note, optionally sliding in pitch.
+  function tone(freq, start, dur, { type = 'sine', gain = 0.2, slideTo } = {}) {
+    const c = ensure();
+    if (!c) return;
+    const t0 = c.currentTime + start;
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.03);
+  }
+
+  // A short filtered noise burst — used for dice rattling.
+  function noise(start, dur, gain = 0.25) {
+    const c = ensure();
+    if (!c) return;
+    const t0 = c.currentTime + start;
+    const frames = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, frames, c.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < frames; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / frames);
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const filter = c.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1800 + Math.random() * 1200;
+    const g = c.createGain();
+    g.gain.value = gain;
+    src.connect(filter).connect(g).connect(c.destination);
+    src.start(t0);
+  }
+
+  const fx = {
+    roll() {
+      for (let i = 0; i < 6; i++) noise(i * 0.05 + Math.random() * 0.02, 0.06, 0.22);
+    },
+    bid() {
+      tone(620, 0, 0.07, { type: 'triangle', gain: 0.16 });
+    },
+    turn() {
+      tone(880, 0, 0.1, { type: 'sine', gain: 0.14 });
+      tone(1175, 0.09, 0.12, { type: 'sine', gain: 0.12 });
+    },
+    challenge() {
+      tone(300, 0, 0.2, { type: 'sawtooth', gain: 0.2, slideTo: 150 });
+    },
+    spot() {
+      tone(520, 0, 0.09, { type: 'square', gain: 0.14 });
+      tone(780, 0.09, 0.12, { type: 'square', gain: 0.14 });
+    },
+    good() {
+      tone(660, 0, 0.1, { type: 'triangle', gain: 0.18 });
+      tone(990, 0.1, 0.16, { type: 'triangle', gain: 0.18 });
+    },
+    lose() {
+      tone(420, 0, 0.16, { type: 'triangle', gain: 0.2, slideTo: 150 });
+    },
+    win() {
+      [523, 659, 784, 1047].forEach((f, i) =>
+        tone(f, i * 0.13, 0.2, { type: 'triangle', gain: 0.22 })
+      );
+    },
+    defeat() {
+      tone(330, 0, 0.2, { type: 'sawtooth', gain: 0.2 });
+      tone(220, 0.18, 0.3, { type: 'sawtooth', gain: 0.2, slideTo: 120 });
+    },
+    error() {
+      tone(180, 0, 0.12, { type: 'square', gain: 0.14 });
+    },
+  };
+
+  return {
+    play(name) {
+      if (muted) return;
+      try {
+        (fx[name] || (() => {}))();
+      } catch {
+        /* audio not available — ignore */
+      }
+    },
+    toggleMute() {
+      muted = !muted;
+      localStorage.setItem('ld_muted', muted ? '1' : '0');
+      return muted;
+    },
+    isMuted() {
+      return muted;
+    },
+    unlock() {
+      try {
+        ensure();
+      } catch {
+        /* ignore */
+      }
+    },
+  };
+})();
+
+// Start/resume the audio context on the first user interaction.
+document.addEventListener('click', () => Sound.unlock());
+
+// Mute toggle button.
+const muteBtn = document.getElementById('muteBtn');
+function paintMute() {
+  muteBtn.textContent = Sound.isMuted() ? '🔇' : '🔊';
+}
+paintMute();
+muteBtn.onclick = () => {
+  const nowMuted = Sound.toggleMute();
+  paintMute();
+  if (!nowMuted) Sound.play('bid'); // little confirmation blip when unmuting
+};
+
+// Compare the previous and next game state to decide which effects to play.
+function detectSounds(prev, state) {
+  const g = state.game;
+  if (!g) return;
+  const pg = prev && prev.game;
+
+  // Game just started -> roll the dice.
+  if (!pg) {
+    Sound.play('roll');
+    return;
+  }
+
+  // A fresh round was dealt.
+  if (g.roundNumber > pg.roundNumber && g.phase === 'playing') {
+    Sound.play('roll');
+    return;
+  }
+
+  // Showdown via challenge or spot-on call.
+  if ((g.phase === 'reveal' || g.phase === 'gameover') && pg.phase === 'playing' && g.lastReveal) {
+    const r = g.lastReveal;
+    Sound.play(r.kind === 'spot-on' ? 'spot' : 'challenge');
+    const iLost = r.losers.includes(me);
+    if (g.phase === 'gameover') {
+      setTimeout(() => Sound.play(g.winnerId === me ? 'win' : 'defeat'), 420);
+    } else {
+      setTimeout(() => Sound.play(iLost ? 'lose' : 'good'), 320);
+    }
+    return;
+  }
+
+  // A bid was placed or raised.
+  const b = g.currentBid;
+  const pb = pg.currentBid;
+  const bidChanged =
+    b && (!pb || b.playerId !== pb.playerId || b.quantity !== pb.quantity || b.face !== pb.face);
+  if (bidChanged && g.phase === 'playing') Sound.play('bid');
+
+  // It just became your turn.
+  if (g.phase === 'playing' && g.turnId === me && pg.turnId !== me) Sound.play('turn');
+}
+
 // --- DOM helpers -----------------------------------------------------------
 const $ = (id) => document.getElementById(id);
 const screens = { home: $('home'), lobby: $('lobby'), game: $('game') };
@@ -106,9 +285,14 @@ socket.on('joined', ({ code, you }) => {
   me = you;
   history.replaceState(null, '', `/?room=${code}`);
 });
-socket.on('errorMsg', (msg) => toast(msg));
+socket.on('errorMsg', (msg) => {
+  Sound.play('error');
+  toast(msg);
+});
 socket.on('state', (state) => {
+  const prev = lastState;
   lastState = state;
+  detectSounds(prev, state);
   render(state);
 });
 
