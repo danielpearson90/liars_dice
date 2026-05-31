@@ -1,0 +1,14 @@
+# One-click deploy config for Render (https://render.com).
+# In the Render dashboard: New > Blueprint, point it at this repo, and it will
+# read this file. Or create a Web Service manually with the build/start commands.
+services:
+  - type: web
+    name: liars-dice
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

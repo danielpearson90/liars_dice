@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>Liar's Dice</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>" />
+  </head>
+  <body>
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Home: create or join -->
+    <main id="home" class="screen">
+      <h1>🎲 Liar's Dice</h1>
+      <p class="tagline">No wilds · spot-on calls · 2–11 players</p>
+      <div class="card">
+        <label>Your name
+          <input id="name" maxlength="20" placeholder="e.g. Sam" autocomplete="off" />
+        </label>
+        <button id="createBtn" class="primary">Create a game</button>
+        <div class="divider"><span>or join one</span></div>
+        <label>Room code
+          <input id="code" maxlength="4" placeholder="ABCD" autocomplete="off" style="text-transform:uppercase" />
+        </label>
+        <button id="joinBtn">Join game</button>
+      </div>
+    </main>
+
+    <!-- Lobby -->
+    <main id="lobby" class="screen hidden">
+      <h2>Lobby</h2>
+      <div class="code-banner">
+        Room code: <strong id="lobbyCode"></strong>
+        <button id="copyCode" class="ghost small">Copy invite link</button>
+      </div>
+      <ul id="memberList" class="member-list"></ul>
+      <button id="startBtn" class="primary hidden">Start game</button>
+      <p id="lobbyHint" class="hint"></p>
+      <button id="leaveLobby" class="ghost small">Leave</button>
+    </main>
+
+    <!-- Game -->
+    <main id="game" class="screen hidden">
+      <header class="game-header">
+        <span id="roundLabel" class="pill"></span>
+        <span id="bidLabel" class="pill bid"></span>
+      </header>
+
+      <section id="players" class="players"></section>
+
+      <section id="reveal" class="reveal hidden"></section>
+
+      <section id="myDice" class="my-dice"></section>
+
+      <section id="controls" class="controls hidden">
+        <div class="bid-builder">
+          <div class="stepper">
+            <button data-step="qty" data-dir="-1">−</button>
+            <span class="stepper-value"><span id="qtyVal">1</span><small>dice</small></span>
+            <button data-step="qty" data-dir="1">+</button>
+          </div>
+          <div class="face-picker" id="facePicker"></div>
+        </div>
+        <button id="bidBtn" class="primary">Bid</button>
+        <div class="call-row">
+          <button id="challengeBtn" class="danger">Liar! (challenge)</button>
+          <button id="spotBtn" class="warn">Spot on!</button>
+        </div>
+      </section>
+
+      <section id="revealActions" class="reveal-actions hidden">
+        <button id="nextRoundBtn" class="primary">Next round</button>
+      </section>
+
+      <section id="gameOver" class="game-over hidden">
+        <h2 id="winnerText"></h2>
+        <button id="rematchBtn" class="primary hidden">Play again</button>
+      </section>
+
+      <button id="leaveGame" class="ghost small">Leave game</button>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+  </body>
+</html>
