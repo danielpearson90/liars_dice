@@ -38,6 +38,19 @@ An optional voice (🗣️ button) reads bids and calls aloud — "4 fours", "li
 "spot on" — using the browser's built-in speech synthesis. Both toggles are
 independent and remembered between visits.
 
+### Themes
+
+Pick a look from the selector in the top-left corner (remembered between
+visits):
+
+- **🍺 Tavern** (default) — candlelit pirate parlor: brass, oxblood, bone dice.
+- **🌙 Midnight** — the original clean dark-blue look.
+- **🌆 Neon** — cyberpunk arcade with cyan/magenta glow and scanlines.
+
+Dice tumble in when a round is dealt, and confetti rains down for the winner.
+It's all pure CSS/canvas (no images, no web-font downloads), so it stays fast
+and works offline.
+
 ## Run it locally
 
 Requires Node.js 18+.

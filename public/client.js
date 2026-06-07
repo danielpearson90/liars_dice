@@ -208,6 +208,74 @@ if (!Speech.supported) {
   };
 }
 
+// --- theme switcher --------------------------------------------------------
+const THEMES = ['theme-tavern', 'theme-midnight', 'theme-neon'];
+const themeSelect = document.getElementById('themeSelect');
+function applyTheme(name) {
+  if (!THEMES.includes(name)) name = THEMES[0];
+  document.body.classList.remove(...THEMES);
+  document.body.classList.add(name);
+  themeSelect.value = name;
+  localStorage.setItem('ld_theme', name);
+}
+applyTheme(localStorage.getItem('ld_theme') || 'theme-tavern');
+themeSelect.onchange = () => applyTheme(themeSelect.value);
+
+// --- win confetti ----------------------------------------------------------
+// Lightweight canvas burst, themed with the current accent colors. No deps.
+function confetti() {
+  const canvas = document.getElementById('confetti');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = innerWidth * dpr;
+  canvas.height = innerHeight * dpr;
+  ctx.scale(dpr, dpr);
+
+  const css = getComputedStyle(document.body);
+  const colors = ['--accent', '--accent-2', '--good', '--warn', '--text']
+    .map((v) => css.getPropertyValue(v).trim())
+    .filter(Boolean);
+
+  const N = 160;
+  const parts = Array.from({ length: N }, () => ({
+    x: innerWidth / 2 + (Math.random() - 0.5) * 120,
+    y: innerHeight / 3,
+    vx: (Math.random() - 0.5) * 11,
+    vy: Math.random() * -11 - 4,
+    g: 0.28 + Math.random() * 0.12,
+    size: 5 + Math.random() * 6,
+    rot: Math.random() * Math.PI,
+    vr: (Math.random() - 0.5) * 0.3,
+    color: colors[(Math.random() * colors.length) | 0] || '#fff',
+  }));
+
+  const start = performance.now();
+  const DURATION = 2600;
+  function frame(now) {
+    const t = now - start;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const p of parts) {
+      p.vy += p.g;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vr;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.max(0, 1 - t / DURATION);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+      ctx.restore();
+    }
+    if (t < DURATION) requestAnimationFrame(frame);
+    else ctx.clearRect(0, 0, innerWidth, innerHeight);
+  }
+  requestAnimationFrame(frame);
+}
+
+// Set when a fresh roll happens, consumed by renderMyDice to animate the dice.
+let pendingRoll = false;
+
 // Compare the previous and next game state to decide which effects to play.
 function detectSounds(prev, state) {
   const g = state.game;
@@ -217,12 +285,14 @@ function detectSounds(prev, state) {
   // Game just started -> roll the dice.
   if (!pg) {
     Sound.play('roll');
+    pendingRoll = true;
     return;
   }
 
   // A fresh round was dealt.
   if (g.roundNumber > pg.roundNumber && g.phase === 'playing') {
     Sound.play('roll');
+    pendingRoll = true;
     return;
   }
 
@@ -234,6 +304,7 @@ function detectSounds(prev, state) {
     const iLost = r.losers.includes(me);
     if (g.phase === 'gameover') {
       setTimeout(() => Sound.play(g.winnerId === me ? 'win' : 'defeat'), 420);
+      confetti(); // celebrate the winner on everyone's screen
     } else {
       setTimeout(() => Sound.play(iLost ? 'lose' : 'good'), 320);
     }
@@ -566,7 +637,16 @@ function renderMyDice(g) {
   box.innerHTML = '';
   const you = g.players.find((p) => p.isYou);
   if (!you || !you.dice || you.eliminated) return;
-  for (const v of you.dice) box.appendChild(dieEl(v));
+  const animate = pendingRoll; // only tumble right after a fresh deal
+  pendingRoll = false;
+  you.dice.forEach((v, i) => {
+    const die = dieEl(v);
+    if (animate) {
+      die.classList.add('rolling');
+      die.style.animationDelay = `${i * 0.06}s`;
+    }
+    box.appendChild(die);
+  });
 }
 
 function renderControls(g) {
