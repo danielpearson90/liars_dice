@@ -44,6 +44,21 @@ test('bids must strictly out-rank the current bid', () => {
   assert.equal(g.currentBid.quantity, 3);
 });
 
+test('each player keeps their latest bid, cleared on a new round', () => {
+  const g = gameWithDice(2, [2, 2, 3, 4, 5, 6, 1, 2, 3, 4]); // three 2s
+  g.bid('p0', 2, 3);
+  g.bid('p1', 2, 4);
+  assert.deepEqual(g.getPlayer('p0').lastBid, { quantity: 2, face: 3 });
+  assert.deepEqual(g.getPlayer('p1').lastBid, { quantity: 2, face: 4 });
+  g.bid('p0', 3, 2); // overwrites p0's standing bid
+  assert.deepEqual(g.getPlayer('p0').lastBid, { quantity: 3, face: 2 });
+
+  g.challenge('p1');
+  g.nextRound();
+  assert.equal(g.getPlayer('p0').lastBid, null);
+  assert.equal(g.getPlayer('p1').lastBid, null);
+});
+
 test('turn order is enforced', () => {
   const g = gameWithDice(2, [1]);
   assert.throws(() => g.bid('p1', 1, 2), /not your turn/);

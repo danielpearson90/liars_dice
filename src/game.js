@@ -45,6 +45,7 @@ export class Game {
       dice: [],
       diceCount: STARTING_DICE,
       eliminated: false,
+      lastBid: null, // this player's current standing bid, cleared each round
     }));
     this.phase = 'playing'; // 'playing' | 'reveal' | 'gameover'
     this.currentBid = null; // { playerId, quantity, face }
@@ -86,6 +87,7 @@ export class Game {
   startRound(firstPlayerId) {
     this.roundNumber += 1;
     for (const p of this.players) {
+      p.lastBid = null; // a new round wipes everyone's standing bid
       if (p.eliminated) {
         p.dice = [];
         continue;
@@ -126,6 +128,7 @@ export class Game {
     }
 
     this.currentBid = { playerId, quantity, face };
+    this.getPlayer(playerId).lastBid = { quantity, face }; // overwrite their chip
     this.turnId = this.nextActiveId(playerId);
     return { type: 'bid', playerId, quantity, face };
   }
@@ -283,6 +286,7 @@ export class Game {
         name: p.name,
         diceCount: p.diceCount,
         eliminated: p.eliminated,
+        lastBid: p.lastBid,
         isYou: p.id === viewerId,
         // Reveal your own dice always; everyone else's only at reveal time.
         dice: p.id === viewerId || reveal ? [...p.dice] : null,

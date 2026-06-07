@@ -392,6 +392,18 @@ function renderPlayers(state) {
     if (p.eliminated) tags.appendChild(badge('Out', 'off'));
     row.appendChild(tags);
 
+    // The player's current standing bid, shown next to their name and
+    // overwritten whenever they bid again.
+    if (p.lastBid && !p.eliminated) {
+      const chip = document.createElement('span');
+      chip.className = 'bid-chip';
+      const qty = document.createElement('span');
+      qty.textContent = `${p.lastBid.quantity} ×`;
+      chip.appendChild(qty);
+      chip.appendChild(dieEl(p.lastBid.face, { small: true }));
+      row.appendChild(chip);
+    }
+
     const dots = document.createElement('span');
     dots.className = 'dot-count';
     for (let i = 0; i < p.diceCount; i++) {
