@@ -43,13 +43,22 @@ independent and remembered between visits.
 Pick a look from the selector in the top-left corner (remembered between
 visits):
 
-- **🍺 Tavern** (default) — candlelit pirate parlor: brass, oxblood, bone dice.
-- **🌙 Midnight** — the original clean dark-blue look.
-- **🌆 Neon** — cyberpunk arcade with cyan/magenta glow and scanlines.
+- **🍺 Tavern** (default) — a fully immersive candlelit pirate parlor: weathered
+  wood planks under pooled, *flickering* candlelight, an edge vignette, drifting
+  embers, a gilded engraved title, brass-plate buttons, a wax-sealed brass room
+  code, bone dice with drilled pips, and gold-coin life counters. Uses period
+  display/body typography (Pirata One, IM Fell English, EB Garamond).
+- **🌙 Midnight** — the original clean dark-blue look (fallback).
+- **🌆 Neon** — cyberpunk arcade with cyan/magenta glow and scanlines (fallback).
 
 Dice tumble in when a round is dealt, and confetti rains down for the winner.
-It's all pure CSS/canvas (no images, no web-font downloads), so it stays fast
-and works offline.
+Everything is pure CSS/canvas (no images), and motion respects
+`prefers-reduced-motion`.
+
+> The Tavern fonts load from Google Fonts in the player's browser and fall back
+> to system serifs if a client is offline — the **server** never needs them. For
+> a fully air-gapped LAN, self-host the three font files and swap the
+> `<link>` in `index.html` for a local `@font-face` block.
 
 ## Run it locally
 

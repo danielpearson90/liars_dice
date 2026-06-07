@@ -9,35 +9,47 @@
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Tavern — candlelit pirate parlor: brass, oxblood, bone dice, aged wood. */
+/* Tavern — candlelit pirate parlor: weathered wood, brass, wax, bone dice.
+   This theme is heavily embellished further down under "Tavern atmosphere". */
 body.theme-tavern {
-  --bg: #140e07;
-  --bg-2: #2c1d0c;
-  --panel: #241a0f;
-  --panel-2: #322515;
-  --text: #f1e4c9;
-  --muted: #b39a72;
-  --accent: #c9a24a;
-  --accent-2: #8a6a2f;
-  --danger: #a8392b;
-  --warn: #d68a2b;
-  --good: #7f9a4a;
-  --die: #efe3c8;
-  --die-2: #d4c39c;
+  --bg: #0f0904;
+  --bg-2: #2a1a09;
+  --panel: #211610;
+  --panel-2: #2d1f14;
+  --text: #f3e7cc;
+  --muted: #bb9d6f;
+  --accent: #d2a747;
+  --accent-2: #7c5a26;
+  --danger: #9c3326;
+  --warn: #d6892a;
+  --good: #8a9a4c;
+  --die: #f1e6cb;
+  --die-2: #d2bf94;
   --die-pip: #2a1c0d;
-  --border: #4a3621;
-  --border-2: #614729;
-  --ink-accent: #2a1c0d;
+  --border: #4f3a22;
+  --border-2: #69502f;
+  --ink-accent: #2a1a06;
   --ink-danger: #f7ecd4;
-  --ink-warn: #2a1c0d;
+  --ink-warn: #2a1a06;
   --ink-good: #16200a;
   --badge-text: #f7ecd4;
   --chip-muted: #4a3621;
-  --dot-lost: #4a3621;
-  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  --glow: 0 0 18px rgba(201, 162, 74, .35);
-  --bg-texture: radial-gradient(rgba(255, 230, 185, .05) 1px, transparent 1.6px);
-  --bg-texture-size: 5px 5px;
+  --dot-lost: #3a2a18;
+  /* Period typography: a pirate display face, an old-print flavor serif, and a
+     warm readable body serif — each with sturdy system-serif fallbacks. */
+  --font-display: "Pirata One", "Luminari", "Cinzel", Georgia, serif;
+  --font-flavor: "IM Fell English", "Hoefler Text", Baskerville, Georgia, serif;
+  --font-body: "EB Garamond", "Iowan Old Style", Palatino, Georgia, serif;
+  --glow: 0 0 18px rgba(210, 167, 71, .35);
+  --bg-texture: none;
+  --bg-texture-size: auto;
+  /* Decorative tokens used by the atmosphere section. */
+  --brass-hi: #f4dc92;
+  --brass: #d2a747;
+  --brass-lo: #7c5b22;
+  --wood-1: #2a1c10;
+  --wood-2: #1d130a;
+  --ember: #ffb14a;
 }
 
 /* Midnight — the original clean dark-blue look. */
@@ -143,15 +155,6 @@ h2, h3 { text-align: center; font-family: var(--font-display); }
 .hint { color: var(--muted); text-align: center; font-size: .9rem; }
 .hidden { display: none !important; }
 
-/* Gilded wordmark for the tavern theme. */
-body.theme-tavern h1 {
-  background: linear-gradient(180deg, #f3d98e 0%, var(--accent) 55%, #7c5b23 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: none;
-  filter: drop-shadow(0 2px 5px rgba(201, 162, 74, .35));
-}
 body.theme-neon h1 { text-transform: uppercase; letter-spacing: .12em; }
 
 /* ===========================================================================
@@ -367,4 +370,182 @@ body.theme-neon .die .pip { box-shadow: 0 0 6px var(--die-pip); }
   .die { width: 40px; height: 40px; }
   h1 { font-size: 2.1rem; }
   .theme-select { font-size: .78rem; padding: 6px 8px; }
+}
+
+/* ===========================================================================
+   Tavern atmosphere  (scoped to body.theme-tavern; other themes untouched)
+   A candlelit pirate parlor: layered wood + candle glow, an edge vignette,
+   drifting embers, gilded engraved signage, brass-plate buttons, a wax-seal
+   room code, bone dice and gold-coin counters.
+   =========================================================================== */
+
+/* --- floor & walls: dark wood, warm pooled candlelight, plank seams --- */
+body.theme-tavern {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(70% 50% at 50% -8%, rgba(255, 176, 74, .16), transparent 70%),
+    radial-gradient(120% 90% at 50% 0%, rgba(120, 70, 20, .18), transparent 60%),
+    repeating-linear-gradient(90deg, var(--wood-1) 0 92px, var(--wood-2) 92px 96px),
+    linear-gradient(180deg, #1a1108, #0c0703);
+  background-size: auto;
+  background-attachment: fixed;
+}
+/* Drifting candle glow that breathes (flicker). */
+body.theme-tavern::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(40% 30% at 50% 4%, rgba(255, 190, 110, .22), transparent 70%),
+    radial-gradient(30% 40% at 12% 85%, rgba(255, 150, 60, .12), transparent 70%),
+    radial-gradient(30% 40% at 88% 80%, rgba(255, 150, 60, .10), transparent 70%);
+  animation: candleFlicker 6s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+/* Edge vignette + fine grain for cinematic depth. */
+body.theme-tavern::after {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(130% 120% at 50% 32%, transparent 52%, rgba(0, 0, 0, .62) 100%),
+    radial-gradient(rgba(255, 228, 180, .035) 1px, transparent 1.6px);
+  background-size: cover, 4px 4px;
+}
+@keyframes candleFlicker {
+  0%, 100% { opacity: .92; }
+  18% { opacity: 1; }
+  35% { opacity: .84; }
+  52% { opacity: .97; }
+  70% { opacity: .8; }
+  85% { opacity: .95; }
+}
+
+/* --- drifting embers --- */
+.embers { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+body:not(.theme-tavern) .embers { display: none; }
+.embers span {
+  position: absolute; bottom: -12px; width: 4px; height: 4px; border-radius: 50%;
+  background: radial-gradient(circle, var(--ember), rgba(255, 120, 30, 0) 70%);
+  opacity: 0; animation: emberRise linear infinite;
+}
+@keyframes emberRise {
+  0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  12% { opacity: .9; }
+  70% { opacity: .55; }
+  100% { transform: translateY(-104vh) translateX(28px) scale(.4); opacity: 0; }
+}
+
+/* --- typography: engraved gold sign, old-print headings --- */
+body.theme-tavern h1 {
+  font-weight: 400;
+  letter-spacing: .03em;
+  background: linear-gradient(180deg, var(--brass-hi) 0%, var(--brass) 48%, var(--brass-lo) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 1px 0 rgba(255, 240, 200, .15);
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, .6)) drop-shadow(0 0 14px rgba(210, 167, 71, .28));
+}
+/* Ornamental rule beneath the title. */
+body.theme-tavern #home h1::after {
+  content: "✦"; display: block; margin: 6px auto 0; width: 220px; max-width: 70%;
+  color: var(--brass); font-size: .8rem; text-align: center; opacity: .85;
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent, var(--brass-lo), var(--brass), var(--brass-lo), transparent) 1;
+  padding-top: 8px; -webkit-text-fill-color: var(--brass);
+}
+body.theme-tavern :is(h2, h3) { font-family: var(--font-flavor); font-weight: 400; letter-spacing: .02em; }
+body.theme-tavern .tagline { font-family: var(--font-flavor); font-style: italic; font-size: 1.05rem; color: var(--muted); }
+body.theme-tavern { letter-spacing: .005em; }
+
+/* --- panels as framed wood with brass corner brackets --- */
+body.theme-tavern .card,
+body.theme-tavern .reveal,
+body.theme-tavern .controls,
+body.theme-tavern .code-banner,
+body.theme-tavern .member-list li,
+body.theme-tavern .player,
+body.theme-tavern .pill {
+  background-image: linear-gradient(180deg, rgba(255, 220, 170, .05), rgba(0, 0, 0, .12)),
+    repeating-linear-gradient(91deg, rgba(0,0,0,.10) 0 7px, transparent 7px 15px);
+  box-shadow: inset 0 1px 0 rgba(255, 225, 170, .08), inset 0 0 30px rgba(0, 0, 0, .45),
+    0 10px 26px rgba(0, 0, 0, .5);
+}
+body.theme-tavern .card { position: relative; border-color: var(--border-2); }
+/* Brass L-brackets on opposite corners of the main cards. */
+body.theme-tavern .card::before,
+body.theme-tavern .card::after {
+  content: ""; position: absolute; width: 16px; height: 16px; pointer-events: none;
+  border: 2px solid var(--brass); opacity: .55;
+}
+body.theme-tavern .card::before { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+body.theme-tavern .card::after { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
+
+/* --- buttons: brass plate, oxblood wax, carved wood --- */
+body.theme-tavern button.primary {
+  background: linear-gradient(180deg, var(--brass-hi), var(--brass) 45%, var(--brass-lo));
+  border: 1px solid #5e441b;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 222, .6), inset 0 -2px 4px rgba(80, 50, 10, .5),
+    0 3px 8px rgba(0, 0, 0, .45);
+  text-shadow: 0 1px 0 rgba(255, 245, 215, .4);
+}
+body.theme-tavern button.danger {
+  background: radial-gradient(120% 120% at 50% 30%, #b9402f, var(--danger) 70%);
+  box-shadow: inset 0 1px 0 rgba(255, 180, 150, .35), 0 3px 8px rgba(0, 0, 0, .45);
+}
+body.theme-tavern button.warn { background: linear-gradient(180deg, #e7a13f, var(--warn)); }
+body.theme-tavern .stepper button,
+body.theme-tavern button.ghost {
+  background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.14) 0 6px, transparent 6px 13px);
+}
+
+/* --- room code as a wax-sealed brass plaque --- */
+body.theme-tavern .code-banner strong {
+  display: inline-block; margin-top: 4px; padding: 6px 18px; border-radius: 8px;
+  color: #2a1a06; -webkit-text-fill-color: #2a1a06;
+  background: linear-gradient(180deg, var(--brass-hi), var(--brass) 55%, var(--brass-lo));
+  border: 1px solid #5e441b;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 222, .7), inset 0 -2px 4px rgba(80, 50, 10, .4),
+    0 3px 8px rgba(0, 0, 0, .4);
+  text-shadow: 0 1px 0 rgba(255, 245, 215, .5);
+}
+
+/* --- bone dice with drilled pips --- */
+body.theme-tavern .die {
+  background:
+    radial-gradient(120% 120% at 30% 20%, #fbf3df, transparent 60%),
+    linear-gradient(150deg, var(--die), var(--die-2));
+  border: 1px solid #b9a473;
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, .55),
+    inset 0 -4px 5px rgba(120, 95, 50, .35), 0 4px 9px rgba(0, 0, 0, .5);
+}
+body.theme-tavern .die .pip {
+  background: radial-gradient(circle at 40% 35%, #4a3417, var(--die-pip));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .7);
+}
+
+/* --- dice counters become stacked gold coins --- */
+body.theme-tavern .dot {
+  width: 12px; height: 12px;
+  background: radial-gradient(circle at 38% 32%, var(--brass-hi), var(--brass) 55%, var(--brass-lo));
+  border: 1px solid #5e441b;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 248, 220, .6);
+}
+body.theme-tavern .dot.lost {
+  background: #2a1c0f; border-color: #3a2a18; box-shadow: inset 0 1px 3px rgba(0, 0, 0, .7);
+}
+
+/* --- turn marker glows like a watched candle --- */
+body.theme-tavern .player.turn {
+  box-shadow: 0 0 0 1px var(--brass), 0 0 16px rgba(210, 167, 71, .35),
+    inset 0 0 24px rgba(210, 167, 71, .08);
+}
+
+/* --- one-time staggered entrance on the entry screen --- */
+@keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+body.theme-tavern #home > * { animation: riseIn .6s both; }
+body.theme-tavern #home h1 { animation-delay: .05s; }
+body.theme-tavern #home .tagline { animation-delay: .16s; }
+body.theme-tavern #home .card { animation-delay: .28s; }
+
+@media (prefers-reduced-motion: reduce) {
+  body.theme-tavern::before { animation: none; }
+  .embers span { animation: none; opacity: 0; }
+  body.theme-tavern #home > * { animation: none; }
+  .die.rolling { animation: none; }
 }

@@ -4,10 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <title>Liar's Dice</title>
+    <!-- Period display/body faces for the Tavern theme. They enhance that theme
+         only and degrade gracefully to system serifs if a client is offline
+         (the server never needs them). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IM+Fell+English:ital@0;1&family=Pirata+One&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>" />
   </head>
   <body class="theme-tavern">
+    <div class="embers" aria-hidden="true"></div>
     <select id="themeSelect" class="theme-select" title="Theme" aria-label="Theme">
       <option value="theme-tavern">🍺 Tavern</option>
       <option value="theme-midnight">🌙 Midnight</option>

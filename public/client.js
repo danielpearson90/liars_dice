@@ -221,6 +221,21 @@ function applyTheme(name) {
 applyTheme(localStorage.getItem('ld_theme') || 'theme-tavern');
 themeSelect.onchange = () => applyTheme(themeSelect.value);
 
+// Populate drifting embers for the Tavern theme (CSS hides them elsewhere).
+(function seedEmbers() {
+  const box = document.querySelector('.embers');
+  if (!box) return;
+  for (let i = 0; i < 16; i++) {
+    const e = document.createElement('span');
+    const size = 2 + Math.random() * 4;
+    e.style.left = `${Math.random() * 100}%`;
+    e.style.width = e.style.height = `${size}px`;
+    e.style.animationDuration = `${7 + Math.random() * 8}s`;
+    e.style.animationDelay = `${-Math.random() * 12}s`;
+    box.appendChild(e);
+  }
+})();
+
 // --- win confetti ----------------------------------------------------------
 // Lightweight canvas burst, themed with the current accent colors. No deps.
 function confetti() {
