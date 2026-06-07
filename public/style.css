@@ -171,6 +171,7 @@ button.small { padding: 8px 12px; font-size: .85rem; }
 .face-picker { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .face-opt { cursor: pointer; border: 2px solid transparent; border-radius: 12px; padding: 3px; }
 .face-opt.sel { border-color: var(--accent); background: rgba(91,140,255,.15); }
+.face-opt.disabled { opacity: .25; cursor: not-allowed; pointer-events: none; }
 .call-row { display: flex; gap: 10px; }
 .call-row button { flex: 1; }
 

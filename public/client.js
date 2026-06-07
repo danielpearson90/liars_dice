@@ -202,7 +202,9 @@ function toast(msg) {
 // --- local UI state --------------------------------------------------------
 let me = null; // socket id once joined
 let lastState = null; // most recent room view
-const bid = { quantity: 1, face: 2 };
+// Current bid being built. Both start unselected each turn (see renderGame).
+const bid = { quantity: null, face: null };
+let activeTurnKey = null; // identifies the turn the current selection belongs to
 
 // Pip layout per die value.
 const PIPS = {
@@ -258,17 +260,39 @@ function toastOk(msg) {
 }
 
 // --- game controls ---------------------------------------------------------
-$('bidBtn').onclick = () => socket.emit('bid', { quantity: bid.quantity, face: bid.face });
+$('bidBtn').onclick = () => {
+  if (bid.quantity == null || bid.face == null) return;
+  socket.emit('bid', { quantity: bid.quantity, face: bid.face });
+};
 $('challengeBtn').onclick = () => socket.emit('challenge');
 $('spotBtn').onclick = () => socket.emit('spotOn');
 $('nextRoundBtn').onclick = () => socket.emit('nextRound');
 $('rematchBtn').onclick = () => socket.emit('rematch');
 $('leaveGame').onclick = leave;
 
+// The lowest and highest quantity that would be a legal bid for `face`,
+// given the current bid on the table. A face is unbiddable when min > max.
+function bidRange(g, face) {
+  const max = g.totalDice;
+  if (!g.currentBid) return { min: 1, max };
+  // Same-or-lower face must beat the quantity; a higher face may match it.
+  const min = face > g.currentBid.face ? g.currentBid.quantity : g.currentBid.quantity + 1;
+  return { min, max };
+}
+
+function faceValid(g, face) {
+  const { min, max } = bidRange(g, face);
+  return min <= max;
+}
+
 document.querySelectorAll('[data-step="qty"]').forEach((btn) => {
   btn.onclick = () => {
-    bid.quantity = Math.max(1, bid.quantity + Number(btn.dataset.dir));
-    renderControls(lastState.game);
+    const g = lastState && lastState.game;
+    if (!g || bid.face == null) return; // pick a face first
+    const { min, max } = bidRange(g, bid.face);
+    const base = bid.quantity == null ? min : bid.quantity;
+    bid.quantity = Math.min(max, Math.max(min, base + Number(btn.dataset.dir)));
+    renderControls(g);
   };
 });
 
@@ -355,6 +379,14 @@ function renderGame(state) {
   renderReveal(g);
 
   const myTurn = g.phase === 'playing' && g.turnId === me;
+  // Clear any leftover selection once at the start of each of your turns, so
+  // nothing is pre-picked when the controls appear.
+  const turnKey = `${g.roundNumber}:${g.turnId}`;
+  if (myTurn && turnKey !== activeTurnKey) {
+    activeTurnKey = turnKey;
+    bid.quantity = null;
+    bid.face = null;
+  }
   $('controls').classList.toggle('hidden', !myTurn);
   if (myTurn) renderControls(g);
 
@@ -431,19 +463,40 @@ function renderMyDice(g) {
 }
 
 function renderControls(g) {
-  $('qtyVal').textContent = bid.quantity;
+  // Quantity reads as "–" until a face (and thus a valid range) is chosen.
+  $('qtyVal').textContent = bid.quantity == null ? '–' : bid.quantity;
+
   const picker = $('facePicker');
   picker.innerHTML = '';
   for (let f = 1; f <= 6; f++) {
+    const valid = faceValid(g, f);
     const opt = document.createElement('div');
-    opt.className = 'face-opt' + (bid.face === f ? ' sel' : '');
+    opt.className =
+      'face-opt' + (bid.face === f ? ' sel' : '') + (valid ? '' : ' disabled');
     opt.appendChild(dieEl(f, { small: true }));
-    opt.onclick = () => {
-      bid.face = f;
-      renderControls(g);
-    };
+    if (valid) {
+      opt.onclick = () => {
+        bid.face = f;
+        // Snap the quantity into the legal range for the newly chosen face.
+        const { min, max } = bidRange(g, f);
+        if (bid.quantity == null || bid.quantity < min) bid.quantity = min;
+        else if (bid.quantity > max) bid.quantity = max;
+        renderControls(g);
+      };
+    }
     picker.appendChild(opt);
   }
+
+  // Grey out the steppers until a face is picked, and at the range bounds.
+  const range = bid.face != null ? bidRange(g, bid.face) : null;
+  const dec = document.querySelector('[data-step="qty"][data-dir="-1"]');
+  const inc = document.querySelector('[data-step="qty"][data-dir="1"]');
+  dec.disabled = !range || bid.quantity == null || bid.quantity <= range.min;
+  inc.disabled = !range || bid.quantity == null || bid.quantity >= range.max;
+
+  // A bid needs both a face and a quantity.
+  $('bidBtn').disabled = bid.face == null || bid.quantity == null;
+
   // A challenge / spot-on is only possible once a bid exists.
   const hasBid = !!g.currentBid;
   $('challengeBtn').disabled = !hasBid;

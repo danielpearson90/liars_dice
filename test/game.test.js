@@ -145,15 +145,28 @@ test('eliminated player is skipped in turn order', () => {
   assert.equal(g.nextActiveId('p2'), 'p0');
 });
 
-test('new round re-rolls and the loser leads', () => {
+test('new round re-rolls and play continues to the next player, not the loser', () => {
   const g = gameWithDice(2, [2, 2, 3, 4, 5, 6, 1, 2, 3, 4]); // three 2s
-  g.bid('p0', 4, 2); // lie -> p0 loses
-  const ev = g.challenge('p1');
+  g.bid('p0', 4, 2); // lie -> p0 loses a die
+  const ev = g.challenge('p1'); // p1 made the call
+  // Next leader is the player after the caller (p1), i.e. p0 — not chosen
+  // because p0 lost, but because it is simply the next seat.
   assert.equal(ev.nextStarterId, 'p0');
   g.nextRound();
   assert.equal(g.turnId, 'p0');
   assert.equal(g.currentBid, null);
   assert.equal(g.roundNumber, 2);
+});
+
+test('next round leader is the seat after the caller (3 players)', () => {
+  const g = gameWithDice(3, [1]); // everyone rolls 1s -> zero 2s
+  g.bid('p0', 1, 2);
+  g.bid('p1', 2, 2);
+  const ev = g.challenge('p2'); // p2 calls; bid was a lie so p1 loses a die
+  // Leader continues past the caller p2 -> wraps to p0.
+  assert.equal(ev.nextStarterId, 'p0');
+  g.nextRound();
+  assert.equal(g.turnId, 'p0');
 });
 
 test('view hides opponents dice during play, reveals at showdown', () => {

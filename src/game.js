@@ -229,13 +229,10 @@ export class Game {
       reveal.winnerId = this.winnerId;
     } else {
       // The next round is started explicitly via `nextRound`, so the UI can
-      // show the reveal first. Decide who starts: the (first) surviving loser,
-      // otherwise the next active player after them.
-      const firstLoser = this.getPlayer(reveal.losers[0]);
-      reveal.nextStarterId =
-        firstLoser && !firstLoser.eliminated
-          ? firstLoser.id
-          : this.nextActiveId(reveal.losers[0]);
+      // show the reveal first. Play simply continues around the table: the
+      // next active player after whoever made the call leads the new round
+      // (turn order never jumps to the player who lost a die).
+      reveal.nextStarterId = this.nextActiveId(reveal.callerId);
     }
     return { type: 'reveal', ...reveal };
   }
