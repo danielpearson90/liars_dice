@@ -363,6 +363,67 @@ body.theme-neon .die .pip { box-shadow: 0 0 6px var(--die-pip); }
 .game-over { text-align: center; }
 .game-over h2 { font-size: 1.7rem; }
 
+/* ===========================================================================
+   Current bid — the centerpiece above the player's dice
+   =========================================================================== */
+.current-bid {
+  margin: 2px auto 16px; max-width: 340px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 14px 26px; border-radius: var(--radius);
+  background: var(--panel); border: 1px solid var(--border);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .32);
+  text-align: center;
+}
+.cb-cap { font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); }
+.cb-main { display: flex; align-items: center; gap: 12px; }
+.cb-qty { font-family: var(--font-display); font-size: 2.7rem; font-weight: 800; line-height: 1; color: var(--accent); }
+.cb-times { font-size: 1.5rem; color: var(--muted); }
+.cb-none { font-size: 1.1rem; color: var(--muted); font-style: italic; padding: 4px 0; }
+.cb-by { font-size: .82rem; color: var(--muted); }
+.current-bid .die { width: 54px; height: 54px; }
+
+@keyframes cbPop {
+  0% { transform: scale(.65); opacity: .15; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.cb-pop { animation: cbPop .4s cubic-bezier(.2, .8, .3, 1.35); }
+
+/* Neon: make the number glow. */
+body.theme-neon .current-bid { border-color: var(--accent); box-shadow: 0 0 18px rgba(38, 230, 255, .22), inset 0 0 18px rgba(38, 230, 255, .06); }
+body.theme-neon .cb-qty { text-shadow: 0 0 14px var(--accent); }
+
+/* Tavern: a brass-riveted hanging slate with a gilded numeral. */
+body.theme-tavern .current-bid {
+  position: relative;
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(210, 167, 71, .12), transparent 70%),
+    linear-gradient(180deg, rgba(255, 220, 170, .05), rgba(0, 0, 0, .3));
+  border: 1px solid var(--brass-lo);
+  box-shadow: inset 0 0 26px rgba(0, 0, 0, .55), 0 0 18px rgba(210, 167, 71, .18),
+    0 10px 26px rgba(0, 0, 0, .5);
+}
+body.theme-tavern .cb-cap { color: var(--brass); }
+body.theme-tavern .cb-qty {
+  background: linear-gradient(180deg, var(--brass-hi), var(--brass) 50%, var(--brass-lo));
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, .55));
+}
+/* Two brass rivets at the top, like a tavern sign nailed to the wall. */
+body.theme-tavern .current-bid::before,
+body.theme-tavern .current-bid::after {
+  content: ""; position: absolute; top: 9px; width: 7px; height: 7px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--brass-hi), var(--brass-lo));
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .5);
+}
+body.theme-tavern .current-bid::before { left: 12px; }
+body.theme-tavern .current-bid::after { right: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cb-pop { animation: none; }
+}
+
 /* Confetti canvas sits above everything, ignoring clicks. */
 #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
 

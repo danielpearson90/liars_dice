@@ -552,12 +552,9 @@ function badge(text, cls = '') {
 function renderGame(state) {
   const g = state.game;
   $('roundLabel').textContent = `Round ${g.roundNumber}`;
-  $('bidLabel').textContent = g.currentBid
-    ? `Bid: ${g.currentBid.quantity} × ${faceName(g.currentBid.face)}`
-    : 'No bid yet';
-  $('bidLabel').classList.toggle('hidden', false);
 
   renderPlayers(state);
+  renderCurrentBid(g);
   renderMyDice(g);
   renderReveal(g);
 
@@ -644,6 +641,61 @@ function renderPlayers(state) {
     row.appendChild(dots);
 
     box.appendChild(row);
+  }
+}
+
+let cbKey = null; // identifies the currently displayed bid, to trigger a pop
+
+// The bid to beat, shown as a centerpiece directly above the player's dice.
+function renderCurrentBid(g) {
+  const box = $('currentBid');
+  if (g.phase !== 'playing') {
+    box.classList.add('hidden');
+    cbKey = null;
+    return;
+  }
+  box.classList.remove('hidden');
+  box.innerHTML = '';
+
+  const cap = document.createElement('div');
+  cap.className = 'cb-cap';
+  cap.textContent = 'Current bid';
+  box.appendChild(cap);
+
+  const b = g.currentBid;
+  if (!b) {
+    const none = document.createElement('div');
+    none.className = 'cb-none';
+    none.textContent = 'No bid yet';
+    box.appendChild(none);
+    cbKey = null;
+    return;
+  }
+
+  const main = document.createElement('div');
+  main.className = 'cb-main';
+  const qty = document.createElement('span');
+  qty.className = 'cb-qty';
+  qty.textContent = b.quantity;
+  const times = document.createElement('span');
+  times.className = 'cb-times';
+  times.textContent = '×';
+  main.append(qty, times, dieEl(b.face));
+  box.appendChild(main);
+
+  const who = g.players.find((p) => p.id === b.playerId);
+  if (who) {
+    const by = document.createElement('div');
+    by.className = 'cb-by';
+    by.textContent = who.isYou ? 'your bid' : `${who.name}'s bid`;
+    box.appendChild(by);
+  }
+
+  // Pop the placard whenever the bid actually changes.
+  const key = `${b.quantity}-${b.face}-${b.playerId}`;
+  if (key !== cbKey) {
+    cbKey = key;
+    main.classList.add('cb-pop');
   }
 }
 
