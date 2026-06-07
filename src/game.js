@@ -1,7 +1,7 @@
 // Pure game engine for Liar's Dice.
 //
 // Ruleset implemented:
-//   - Each player starts with 5 dice.
+//   - Each player starts with the same number of dice (configurable, 1..20).
 //   - On a player's turn they may either RAISE the current bid or, if a bid
 //     already exists, CHALLENGE it ("liar") or call SPOT-ON ("exact").
 //   - A bid is a (quantity, face) pair claiming that AT LEAST `quantity` dice
@@ -21,6 +21,7 @@
 // The engine is deterministic given an injected RNG, which keeps it testable.
 
 export const STARTING_DICE = 5;
+export const MAX_STARTING_DICE = 20;
 export const DICE_FACES = 6;
 
 const defaultRng = () => Math.random();
@@ -29,27 +30,37 @@ function rollDie(rng) {
   return 1 + Math.floor(rng() * DICE_FACES);
 }
 
+/** Coerce to a whole number of starting dice within the allowed range. */
+export function clampStartingDice(n) {
+  n = Math.round(Number(n));
+  if (!Number.isFinite(n)) return STARTING_DICE;
+  return Math.max(1, Math.min(MAX_STARTING_DICE, n));
+}
+
 export class Game {
   /**
    * @param {Array<{id: string, name: string}>} players seating order
    * @param {() => number} [rng] returns a float in [0, 1)
+   * @param {number} [startingDice] dice each player begins with (1..20)
    */
-  constructor(players, rng = defaultRng) {
+  constructor(players, rng = defaultRng, startingDice = STARTING_DICE) {
     if (players.length < 2) {
       throw new Error('Need at least 2 players to start.');
     }
     this.rng = rng;
+    this.startingDice = clampStartingDice(startingDice);
     this.players = players.map((p) => ({
       id: p.id,
       name: p.name,
       dice: [],
-      diceCount: STARTING_DICE,
+      diceCount: this.startingDice,
       eliminated: false,
       lastBid: null, // this player's current standing bid, cleared each round
     }));
     this.phase = 'playing'; // 'playing' | 'reveal' | 'gameover'
     this.currentBid = null; // { playerId, quantity, face }
     this.turnId = this.players[0].id;
+    this.roundStarterId = null; // who opened the current round (set in startRound)
     this.roundNumber = 0;
     this.lastReveal = null; // populated after a challenge / spot-on
     this.winnerId = null;
@@ -99,6 +110,7 @@ export class Game {
     const starter = this.getPlayer(firstPlayerId);
     this.turnId =
       starter && !starter.eliminated ? firstPlayerId : this.nextActiveId(firstPlayerId);
+    this.roundStarterId = this.turnId; // remember the opener for seat rotation
   }
 
   // --- actions -------------------------------------------------------------
@@ -229,10 +241,10 @@ export class Game {
       reveal.winnerId = this.winnerId;
     } else {
       // The next round is started explicitly via `nextRound`, so the UI can
-      // show the reveal first. Play simply continues around the table: the
-      // next active player after whoever made the call leads the new round
-      // (turn order never jumps to the player who lost a die).
-      reveal.nextStarterId = this.nextActiveId(reveal.callerId);
+      // show the reveal first. The opener advances exactly one seat each round:
+      // the next active player after whoever opened the round that just ended
+      // (independent of who called or who lost a die).
+      reveal.nextStarterId = this.nextActiveId(this.roundStarterId);
     }
     return { type: 'reveal', ...reveal };
   }

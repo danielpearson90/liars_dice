@@ -1,7 +1,7 @@
 // In-memory room registry. A room holds a lobby of players and, once started,
 // a running Game. Rooms live only in memory, so a server restart clears them.
 
-import { Game } from './game.js';
+import { Game, STARTING_DICE, clampStartingDice } from './game.js';
 
 export const MAX_PLAYERS = 11; // host + up to 10 friends
 
@@ -47,6 +47,19 @@ export class Room {
     this.members = new Map();
     this.hostId = null;
     this.game = null;
+    // Host-configurable room options, applied when a game is started.
+    this.settings = { startingDice: STARTING_DICE, showProbability: false };
+  }
+
+  /** Apply a partial settings update from the host, validating each field. */
+  updateSettings(partial = {}) {
+    if (partial.startingDice !== undefined) {
+      this.settings.startingDice = clampStartingDice(partial.startingDice);
+    }
+    if (partial.showProbability !== undefined) {
+      this.settings.showProbability = !!partial.showProbability;
+    }
+    return this.settings;
   }
 
   get size() {
@@ -76,7 +89,7 @@ export class Room {
 
   startGame() {
     const seating = [...this.members.values()].map((m) => ({ id: m.id, name: m.name }));
-    this.game = new Game(seating);
+    this.game = new Game(seating, undefined, this.settings.startingDice);
     return this.game;
   }
 
@@ -85,6 +98,7 @@ export class Room {
     return {
       code: this.code,
       hostId: this.hostId,
+      settings: this.settings,
       members: [...this.members.values()].map((m) => ({
         id: m.id,
         name: m.name,

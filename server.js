@@ -104,6 +104,17 @@ io.on('connection', (socket) => {
     }
   };
 
+  // Host adjusts room options in the lobby (starting dice, probability display).
+  socket.on('updateSettings', (partial) => {
+    const info = socketInfo.get(socket.id);
+    const room = info && rooms.getRoom(info.code);
+    if (!room) return;
+    if (room.hostId !== socket.id) return reply('errorMsg', 'Only the host can change settings.');
+    if (room.game) return reply('errorMsg', 'Settings are locked once the game starts.');
+    room.updateSettings(partial || {});
+    broadcastRoom(room);
+  });
+
   socket.on('start', () => {
     const info = socketInfo.get(socket.id);
     const room = info && rooms.getRoom(info.code);

@@ -121,17 +121,10 @@ test('spot-on: wrong -> caller loses a die', () => {
 
 test('losing the last die eliminates a player and ends a 2-player game', () => {
   const g = gameWithDice(2, [1]); // everyone rolls all 1s, so there are zero 2s
-  // p0 bids a 2 (a lie), p1 challenges, the bidder p0 loses — and since the
-  // loser leads the next round, p0 keeps leading and losing.
-  for (let i = 0; i < 4; i++) {
-    g.bid('p0', 1, 2); // claim a 2 exists; none do -> lie
-    g.challenge('p1'); // p0 (bidder) loses a die
-    g.nextRound();
-  }
-  assert.equal(g.getPlayer('p0').diceCount, 1);
-  // Final loss eliminates p0 and ends the game.
-  g.bid('p0', 1, 2);
-  const ev = g.challenge('p1');
+  g.getPlayer('p0').diceCount = 1; // p0 is down to its final die
+  g.startRound('p0'); // re-deal with p0 opening
+  g.bid('p0', 1, 2); // claim a 2 exists; none do -> lie
+  const ev = g.challenge('p1'); // p0 (bidder) loses its last die
   assert.equal(ev.gameOver, true);
   assert.equal(ev.winnerId, 'p1');
   assert.equal(g.phase, 'gameover');
@@ -145,28 +138,32 @@ test('eliminated player is skipped in turn order', () => {
   assert.equal(g.nextActiveId('p2'), 'p0');
 });
 
-test('new round re-rolls and play continues to the next player, not the loser', () => {
+test('the round opener advances one seat each round, regardless of the caller', () => {
   const g = gameWithDice(2, [2, 2, 3, 4, 5, 6, 1, 2, 3, 4]); // three 2s
+  assert.equal(g.roundStarterId, 'p0'); // round 1 opens with the first seat
   g.bid('p0', 4, 2); // lie -> p0 loses a die
   const ev = g.challenge('p1'); // p1 made the call
-  // Next leader is the player after the caller (p1), i.e. p0 — not chosen
-  // because p0 lost, but because it is simply the next seat.
-  assert.equal(ev.nextStarterId, 'p0');
+  // Opener for round 2 is the seat after the previous opener (p0) -> p1,
+  // not chosen by who called or who lost.
+  assert.equal(ev.nextStarterId, 'p1');
   g.nextRound();
-  assert.equal(g.turnId, 'p0');
+  assert.equal(g.turnId, 'p1');
+  assert.equal(g.roundStarterId, 'p1');
   assert.equal(g.currentBid, null);
   assert.equal(g.roundNumber, 2);
 });
 
-test('next round leader is the seat after the caller (3 players)', () => {
+test('opener rotation ignores who called the showdown (3 players)', () => {
   const g = gameWithDice(3, [1]); // everyone rolls 1s -> zero 2s
+  assert.equal(g.roundStarterId, 'p0');
   g.bid('p0', 1, 2);
   g.bid('p1', 2, 2);
-  const ev = g.challenge('p2'); // p2 calls; bid was a lie so p1 loses a die
-  // Leader continues past the caller p2 -> wraps to p0.
-  assert.equal(ev.nextStarterId, 'p0');
+  g.challenge('p2'); // p2 calls; the previous opener was p0
+  const ev = g.lastReveal;
+  // Opener advances from p0 to the next seat, p1 (independent of caller p2).
+  assert.equal(ev.nextStarterId, 'p1');
   g.nextRound();
-  assert.equal(g.turnId, 'p0');
+  assert.equal(g.turnId, 'p1');
 });
 
 test('view hides opponents dice during play, reveals at showdown', () => {
@@ -188,4 +185,28 @@ test('cannot challenge or call spot-on with no bid', () => {
 
 test('needs at least two players', () => {
   assert.throws(() => new Game([{ id: 'p0', name: 'solo' }]), /at least 2/);
+});
+
+test('starting dice are configurable and flow into the deal', () => {
+  const players = [
+    { id: 'p0', name: 'A' },
+    { id: 'p1', name: 'B' },
+  ];
+  const g = new Game(players, () => 0.0001, 3);
+  assert.equal(g.startingDice, 3);
+  assert.equal(g.getPlayer('p0').diceCount, 3);
+  assert.equal(g.getPlayer('p0').dice.length, 3);
+  assert.equal(g.totalDiceInPlay(), 6);
+});
+
+test('starting dice are clamped to 1..20', () => {
+  const players = [
+    { id: 'p0', name: 'A' },
+    { id: 'p1', name: 'B' },
+  ];
+  assert.equal(new Game(players, undefined, 25).startingDice, 20);
+  assert.equal(new Game(players, undefined, 0).startingDice, 1);
+  assert.equal(new Game(players, undefined, -5).startingDice, 1);
+  assert.equal(new Game(players, undefined, 4.6).startingDice, 5); // rounds
+  assert.equal(new Game(players, undefined).startingDice, 5); // default
 });

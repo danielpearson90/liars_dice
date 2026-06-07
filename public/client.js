@@ -1,5 +1,8 @@
 /* global io */
+import { pAtLeast } from './probability.js';
+
 const socket = io();
+const MAX_STARTING_DICE = 20;
 
 // --- sound effects ---------------------------------------------------------
 // All effects are synthesized with the Web Audio API, so there are no audio
@@ -241,6 +244,18 @@ $('name').oninput = () => localStorage.setItem('ld_name', $('name').value.trim()
 // --- lobby -----------------------------------------------------------------
 $('startBtn').onclick = () => socket.emit('start');
 $('leaveLobby').onclick = leave;
+
+// Host-only game settings. Edits are sent to the server, which validates and
+// broadcasts them back so every member's lobby stays in sync.
+function currentDice() {
+  return (lastState && lastState.settings && lastState.settings.startingDice) || 5;
+}
+$('diceDown').onclick = () =>
+  socket.emit('updateSettings', { startingDice: Math.max(1, currentDice() - 1) });
+$('diceUp').onclick = () =>
+  socket.emit('updateSettings', { startingDice: Math.min(MAX_STARTING_DICE, currentDice() + 1) });
+$('probToggle').onchange = (e) =>
+  socket.emit('updateSettings', { showProbability: e.target.checked });
 $('copyCode').onclick = () => {
   const url = `${location.origin}/?room=${lastState.code}`;
   navigator.clipboard?.writeText(url).then(
@@ -357,6 +372,17 @@ function renderLobby(state) {
       ? 'Everyone in? Hit start.'
       : 'Waiting for at least one more player…'
     : 'Waiting for the host to start the game.';
+
+  // Reflect current settings; only the host can change them.
+  const s = state.settings || { startingDice: 5, showProbability: false };
+  $('diceVal').firstElementChild.textContent = s.startingDice;
+  $('probToggle').checked = !!s.showProbability;
+  for (const el of [$('diceDown'), $('diceUp'), $('probToggle')]) el.disabled = !amHost;
+  $('diceDown').disabled = !amHost || s.startingDice <= 1;
+  $('diceUp').disabled = !amHost || s.startingDice >= MAX_STARTING_DICE;
+  $('settingsHint').textContent = amHost
+    ? 'Only you can change these.'
+    : 'The host sets these options.';
 }
 
 function badge(text, cls = '') {
@@ -434,6 +460,16 @@ function renderPlayers(state) {
       chip.appendChild(qty);
       chip.appendChild(dieEl(p.lastBid.face, { small: true }));
       row.appendChild(chip);
+
+      // Optional global probability that the bid is true (all dice unknown).
+      if (state.settings && state.settings.showProbability) {
+        const n = g.totalDice;
+        const pct = Math.round(pAtLeast(p.lastBid.quantity, n) * 100);
+        const prob = document.createElement('span');
+        prob.className = 'bid-prob';
+        prob.textContent = `${pct}% with ${n} dice`;
+        row.appendChild(prob);
+      }
     }
 
     const dots = document.createElement('span');

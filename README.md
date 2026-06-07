@@ -7,7 +7,8 @@ laptop — no installs, no accounts.
 
 ## Rules in this version
 
-- Everyone starts with **5 dice**, hidden from the others.
+- Everyone starts with the same number of dice (the host picks **1–20**,
+  default 5), hidden from the others.
 - On your turn you either **raise the bid** or, if a bid exists, call it.
 - A **bid** is `quantity × face`, e.g. "four 3s" — a claim that *at least* that
   many of that face are showing across **all** dice on the table.
@@ -20,6 +21,14 @@ laptop — no installs, no accounts.
   - Exactly right → **every other player** loses a die.
   - Wrong → **you** lose a die.
 - Lose your last die and you're out. **Last player standing wins.**
+- The player who **opens** the bidding rotates one seat each round.
+
+### Lobby options (set by the host)
+
+- **Starting dice per player** — anywhere from 1 to 20.
+- **Show bid probabilities** — when on, each player's standing bid is annotated
+  with the odds it's true, e.g. `23% with 20 dice`. This is the *global* chance
+  (every die treated as unknown), so it's the same for everyone at the table.
 
 Sound effects (dice rolls, bids, challenges, wins/losses) are synthesized in the
 browser with the Web Audio API — no files to download. Toggle them with the

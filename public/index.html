@@ -36,6 +36,24 @@
         <button id="copyCode" class="ghost small">Copy invite link</button>
       </div>
       <ul id="memberList" class="member-list"></ul>
+
+      <div class="settings card">
+        <h3>Game settings</h3>
+        <div class="setting-row">
+          <span>Starting dice per player</span>
+          <div class="stepper small-stepper">
+            <button id="diceDown" data-setting="dice" data-dir="-1">−</button>
+            <span id="diceVal" class="stepper-value"><span>5</span></span>
+            <button id="diceUp" data-setting="dice" data-dir="1">+</button>
+          </div>
+        </div>
+        <label class="setting-row toggle">
+          <span>Show bid probabilities</span>
+          <input id="probToggle" type="checkbox" />
+        </label>
+        <p id="settingsHint" class="hint"></p>
+      </div>
+
       <button id="startBtn" class="primary hidden">Start game</button>
       <p id="lobbyHint" class="hint"></p>
       <button id="leaveLobby" class="ghost small">Leave</button>
@@ -83,6 +101,6 @@
     </main>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="client.js"></script>
+    <script type="module" src="client.js"></script>
   </body>
 </html>
