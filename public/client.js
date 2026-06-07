@@ -221,18 +221,33 @@ function applyTheme(name) {
 applyTheme(localStorage.getItem('ld_theme') || 'theme-tavern');
 themeSelect.onchange = () => applyTheme(themeSelect.value);
 
-// Populate drifting embers for the Tavern theme (CSS hides them elsewhere).
-(function seedEmbers() {
-  const box = document.querySelector('.embers');
-  if (!box) return;
-  for (let i = 0; i < 16; i++) {
-    const e = document.createElement('span');
-    const size = 2 + Math.random() * 4;
-    e.style.left = `${Math.random() * 100}%`;
-    e.style.width = e.style.height = `${size}px`;
-    e.style.animationDuration = `${7 + Math.random() * 8}s`;
-    e.style.animationDelay = `${-Math.random() * 12}s`;
-    box.appendChild(e);
+// Populate per-theme atmosphere particles once. CSS shows each set only under
+// its own theme, so they cost nothing while another theme is active.
+(function seedAtmosphere() {
+  const embers = document.querySelector('.embers');
+  if (embers) {
+    for (let i = 0; i < 16; i++) {
+      const e = document.createElement('span');
+      const size = 2 + Math.random() * 4;
+      e.style.left = `${Math.random() * 100}%`;
+      e.style.width = e.style.height = `${size}px`;
+      e.style.animationDuration = `${7 + Math.random() * 8}s`;
+      e.style.animationDelay = `${-Math.random() * 12}s`;
+      embers.appendChild(e);
+    }
+  }
+  const stars = document.querySelector('.stars');
+  if (stars) {
+    for (let i = 0; i < 80; i++) {
+      const s = document.createElement('span');
+      const size = 1 + Math.random() * 2;
+      s.style.left = `${Math.random() * 100}%`;
+      s.style.top = `${Math.random() * 100}%`;
+      s.style.width = s.style.height = `${size}px`;
+      s.style.animationDuration = `${2.5 + Math.random() * 4}s`;
+      s.style.animationDelay = `${-Math.random() * 6}s`;
+      stars.appendChild(s);
+    }
   }
 })();
 

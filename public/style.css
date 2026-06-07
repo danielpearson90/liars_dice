@@ -77,8 +77,9 @@ body.theme-midnight {
   --badge-text: #ffffff;
   --chip-muted: #44506f;
   --dot-lost: #394566;
-  --font-display: var(--font-body);
-  --glow: 0 0 16px rgba(91, 140, 255, .25);
+  --font-display: "Cormorant Garamond", Didot, "Times New Roman", serif;
+  --font-body: "Jost", "Century Gothic", system-ui, sans-serif;
+  --glow: 0 0 22px rgba(120, 160, 255, .4);
   --bg-texture: none;
   --bg-texture-size: auto;
 }
@@ -108,9 +109,10 @@ body.theme-neon {
   --badge-text: #04121a;
   --chip-muted: #2a2750;
   --dot-lost: #2a2750;
-  --font-display: "Bahnschrift", "DIN Alternate", Futura, system-ui, sans-serif;
+  --font-display: "Monoton", "Audiowide", Impact, system-ui, sans-serif;
+  --font-body: "Chakra Petch", ui-monospace, "Segoe UI", monospace;
   --glow: 0 0 16px rgba(38, 230, 255, .6);
-  --bg-texture: repeating-linear-gradient(transparent 0 2px, rgba(38, 230, 255, .04) 2px 3px);
+  --bg-texture: none;
   --bg-texture-size: auto;
 }
 
@@ -422,6 +424,180 @@ body.theme-tavern .current-bid::after { right: 12px; }
 
 @media (prefers-reduced-motion: reduce) {
   .cb-pop { animation: none; }
+}
+
+/* ===========================================================================
+   Midnight atmosphere  (scoped to body.theme-midnight)
+   A calm celestial night: drifting nebula, a twinkling starfield with the odd
+   shooting star, an edge vignette, frosted moonlit-glass panels, and elegant
+   Cormorant / Jost typography.
+   =========================================================================== */
+body.theme-midnight {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(55% 45% at 18% 12%, rgba(90, 130, 255, .14), transparent 60%),
+    radial-gradient(45% 40% at 85% 18%, rgba(60, 200, 220, .10), transparent 60%),
+    radial-gradient(90% 70% at 50% 115%, rgba(40, 60, 170, .20), transparent 70%),
+    linear-gradient(180deg, #0a1024, #05070f);
+  background-attachment: fixed;
+  background-size: auto;
+}
+body.theme-midnight::before {
+  content: ""; position: fixed; inset: -20%; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(35% 28% at 30% 35%, rgba(80, 140, 255, .10), transparent 70%),
+    radial-gradient(30% 24% at 72% 60%, rgba(70, 210, 220, .08), transparent 70%);
+  animation: nebulaDrift 26s ease-in-out infinite alternate;
+}
+body.theme-midnight::after {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(125% 120% at 50% 30%, transparent 55%, rgba(0, 0, 8, .6) 100%);
+}
+@keyframes nebulaDrift {
+  0% { transform: translate3d(-2%, -1%, 0) scale(1); }
+  100% { transform: translate3d(3%, 2%, 0) scale(1.08); }
+}
+
+.stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+body:not(.theme-midnight) .stars { display: none; }
+.stars span {
+  position: absolute; width: 2px; height: 2px; border-radius: 50%;
+  background: #dfeaff; box-shadow: 0 0 4px rgba(200, 220, 255, .85);
+  animation: twinkle ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: .15; transform: scale(.7); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+.stars::after {
+  content: ""; position: absolute; top: 12%; left: -12%;
+  width: 130px; height: 1.5px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #eaf2ff);
+  box-shadow: 0 0 8px rgba(180, 210, 255, .9);
+  transform: rotate(16deg); opacity: 0;
+  animation: shoot 11s ease-in infinite;
+}
+@keyframes shoot {
+  0%, 84% { opacity: 0; transform: translate(0, 0) rotate(16deg); }
+  87% { opacity: 1; }
+  100% { opacity: 0; transform: translate(82vw, 26vh) rotate(16deg); }
+}
+
+body.theme-midnight h1 {
+  font-weight: 600; letter-spacing: .02em;
+  background: linear-gradient(180deg, #f1f5ff, #a9c2ff 58%, #5b8cff);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 20px rgba(120, 160, 255, .45));
+}
+body.theme-midnight .tagline { font-style: italic; letter-spacing: .04em; font-size: 1.02rem; }
+
+body.theme-midnight .card,
+body.theme-midnight .reveal,
+body.theme-midnight .controls,
+body.theme-midnight .code-banner,
+body.theme-midnight .member-list li,
+body.theme-midnight .player,
+body.theme-midnight .pill {
+  background: linear-gradient(180deg, rgba(70, 95, 170, .22), rgba(18, 26, 52, .42));
+  border-color: rgba(125, 155, 255, .20);
+  box-shadow: inset 0 1px 0 rgba(170, 195, 255, .12), 0 12px 30px rgba(0, 0, 0, .42);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+}
+body.theme-midnight button.primary {
+  background: linear-gradient(180deg, #8fb0ff, var(--accent) 55%, #3f63c8);
+  box-shadow: 0 0 16px rgba(91, 140, 255, .35), inset 0 1px 0 rgba(220, 232, 255, .5);
+}
+body.theme-midnight .player.turn { box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgba(91, 140, 255, .4); }
+body.theme-midnight #home > * { animation: riseIn .6s both; }
+body.theme-midnight #home h1 { animation-delay: .05s; }
+body.theme-midnight #home .tagline { animation-delay: .16s; }
+body.theme-midnight #home .card { animation-delay: .28s; }
+
+/* ===========================================================================
+   Neon atmosphere  (scoped to body.theme-neon)
+   Synthwave arcade: a receding perspective grid floor, a slatted neon sun,
+   CRT scanlines + vignette, and a flickering neon-tube title in Monoton.
+   =========================================================================== */
+body.theme-neon {
+  background-color: #06030f;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 100% at 50% 38%, transparent 52%, rgba(0, 0, 0, .65) 100%),
+    linear-gradient(180deg, #0b0524 0%, #1d0a40 55%, #34103f 100%);
+  background-attachment: fixed;
+  background-size: auto;
+}
+/* slatted neon sun */
+body.theme-neon::before {
+  content: ""; position: fixed; top: 13%; left: 50%; transform: translateX(-50%);
+  width: 280px; height: 280px; border-radius: 50%; z-index: 0; pointer-events: none;
+  background: linear-gradient(180deg, #ffe14d 0%, #ff8a3d 38%, #ff3df0 72%, #26e6ff 100%);
+  -webkit-mask: repeating-linear-gradient(180deg, #000 0 10px, transparent 10px 17px);
+  mask: repeating-linear-gradient(180deg, #000 0 10px, transparent 10px 17px);
+  filter: drop-shadow(0 0 42px rgba(255, 61, 240, .5));
+  opacity: .9;
+}
+/* receding grid floor */
+body.theme-neon::after {
+  content: ""; position: fixed; left: 50%; bottom: 0; width: 240vw; height: 55vh;
+  transform: translateX(-50%) perspective(320px) rotateX(62deg); transform-origin: bottom center;
+  z-index: 0; pointer-events: none;
+  background-image:
+    repeating-linear-gradient(to right, rgba(38, 230, 255, .55) 0 2px, transparent 2px 64px),
+    repeating-linear-gradient(to bottom, rgba(255, 61, 240, .42) 0 2px, transparent 2px 64px);
+  -webkit-mask: linear-gradient(to top, #000, transparent 80%);
+  mask: linear-gradient(to top, #000, transparent 80%);
+  animation: gridScroll 5s linear infinite;
+}
+@keyframes gridScroll {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 0 0, 0 64px; }
+}
+
+body.theme-neon h1 {
+  font-family: var(--font-display); font-weight: 400; text-transform: uppercase; letter-spacing: .06em;
+  color: #fdf2ff;
+  text-shadow: 0 0 5px #fff, 0 0 12px var(--accent), 0 0 26px var(--accent), 0 0 44px var(--accent-2);
+  animation: neonFlicker 5s infinite;
+}
+@keyframes neonFlicker {
+  0%, 19%, 21%, 55%, 57%, 100% { opacity: 1; }
+  20%, 56% { opacity: .74; }
+  20.5% { opacity: .5; }
+}
+body.theme-neon .tagline { letter-spacing: .16em; text-transform: uppercase; font-size: .82rem; }
+
+body.theme-neon .card,
+body.theme-neon .reveal,
+body.theme-neon .controls,
+body.theme-neon .code-banner,
+body.theme-neon .member-list li,
+body.theme-neon .player,
+body.theme-neon .pill {
+  background: linear-gradient(180deg, rgba(24, 18, 48, .72), rgba(10, 8, 26, .82));
+  border-color: var(--border-2);
+  box-shadow: inset 0 0 18px rgba(38, 230, 255, .06), 0 0 14px rgba(38, 230, 255, .10),
+    0 10px 26px rgba(0, 0, 0, .55);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+body.theme-neon button.primary {
+  background: linear-gradient(180deg, #5cf0ff, var(--accent));
+  box-shadow: 0 0 16px rgba(38, 230, 255, .5), inset 0 1px 0 rgba(220, 255, 255, .6);
+}
+body.theme-neon .player.turn { box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgba(38, 230, 255, .45); }
+body.theme-neon .code-banner strong { text-shadow: 0 0 10px var(--accent); }
+body.theme-neon #home > * { animation: riseIn .6s both; }
+body.theme-neon #home h1 { animation-delay: .05s; }
+body.theme-neon #home .tagline { animation-delay: .16s; }
+body.theme-neon #home .card { animation-delay: .28s; }
+
+@media (prefers-reduced-motion: reduce) {
+  body.theme-midnight::before { animation: none; }
+  .stars span, .stars::after { animation: none; }
+  body.theme-neon::after { animation: none; }
+  body.theme-neon h1 { animation: none; }
+  body.theme-midnight #home > *, body.theme-neon #home > * { animation: none; }
 }
 
 /* Confetti canvas sits above everything, ignoring clicks. */

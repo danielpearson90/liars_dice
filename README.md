@@ -48,8 +48,12 @@ visits):
   embers, a gilded engraved title, brass-plate buttons, a wax-sealed brass room
   code, bone dice with drilled pips, and gold-coin life counters. Uses period
   display/body typography (Pirata One, IM Fell English, EB Garamond).
-- **🌙 Midnight** — the original clean dark-blue look (fallback).
-- **🌆 Neon** — cyberpunk arcade with cyan/magenta glow and scanlines (fallback).
+- **🌙 Midnight** — a calm celestial night: a twinkling starfield with the odd
+  shooting star, slowly drifting nebula, an edge vignette, frosted moonlit-glass
+  panels, and elegant Cormorant Garamond / Jost typography.
+- **🌆 Neon** — a synthwave arcade: a receding perspective grid floor, a slatted
+  neon sun, CRT scanlines, glassy panels, and a flickering neon-tube title
+  (Monoton) over Chakra Petch.
 
 Dice tumble in when a round is dealt, and confetti rains down for the winner.
 Everything is pure CSS/canvas (no images), and motion respects
