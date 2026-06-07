@@ -126,6 +126,56 @@ const Sound = (() => {
   };
 })();
 
+// --- spoken announcements --------------------------------------------------
+// Reads bids and calls aloud with the browser's built-in speech synthesis.
+// Like the sound effects this is entirely client-side and offline.
+const Speech = (() => {
+  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  let on = localStorage.getItem('ld_speech') === '1';
+  let voice = null;
+
+  function pickVoice() {
+    if (!supported) return;
+    const voices = window.speechSynthesis.getVoices();
+    // Prefer an English voice, otherwise whatever the platform offers.
+    voice = voices.find((v) => /^en[-_]/i.test(v.lang)) || voices[0] || null;
+  }
+  if (supported) {
+    pickVoice();
+    window.speechSynthesis.onvoiceschanged = pickVoice;
+  }
+
+  function say(text) {
+    if (!on || !supported) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      if (voice) u.voice = voice;
+      u.rate = 1;
+      u.pitch = 1;
+      window.speechSynthesis.speak(u);
+    } catch {
+      /* speech not available — ignore */
+    }
+  }
+
+  return {
+    supported,
+    say,
+    isOn: () => on,
+    toggle() {
+      on = !on;
+      localStorage.setItem('ld_speech', on ? '1' : '0');
+      if (!on && supported) window.speechSynthesis.cancel();
+      return on;
+    },
+  };
+})();
+
+// Phrase a bid the way it's spoken/written, e.g. "4 fours", "1 six".
+function spokenBid(quantity, face) {
+  return `${quantity} ${faceName(face)}${quantity === 1 ? '' : 's'}`;
+}
+
 // Start/resume the audio context on the first user interaction.
 document.addEventListener('click', () => Sound.unlock());
 
@@ -140,6 +190,23 @@ muteBtn.onclick = () => {
   paintMute();
   if (!nowMuted) Sound.play('bid'); // little confirmation blip when unmuting
 };
+
+// Voice toggle button (hidden if the browser has no speech synthesis).
+const speechBtn = document.getElementById('speechBtn');
+if (!Speech.supported) {
+  speechBtn.classList.add('hidden');
+} else {
+  const paintSpeech = () => {
+    speechBtn.classList.toggle('btn-off', !Speech.isOn());
+    speechBtn.title = Speech.isOn() ? 'Voice on' : 'Voice off';
+  };
+  paintSpeech();
+  speechBtn.onclick = () => {
+    const nowOn = Speech.toggle();
+    paintSpeech();
+    if (nowOn) Speech.say('spot on'); // quick confirmation that voice works
+  };
+}
 
 // Compare the previous and next game state to decide which effects to play.
 function detectSounds(prev, state) {
@@ -163,6 +230,7 @@ function detectSounds(prev, state) {
   if ((g.phase === 'reveal' || g.phase === 'gameover') && pg.phase === 'playing' && g.lastReveal) {
     const r = g.lastReveal;
     Sound.play(r.kind === 'spot-on' ? 'spot' : 'challenge');
+    Speech.say(r.kind === 'spot-on' ? 'spot on' : 'liar');
     const iLost = r.losers.includes(me);
     if (g.phase === 'gameover') {
       setTimeout(() => Sound.play(g.winnerId === me ? 'win' : 'defeat'), 420);
@@ -177,7 +245,10 @@ function detectSounds(prev, state) {
   const pb = pg.currentBid;
   const bidChanged =
     b && (!pb || b.playerId !== pb.playerId || b.quantity !== pb.quantity || b.face !== pb.face);
-  if (bidChanged && g.phase === 'playing') Sound.play('bid');
+  if (bidChanged && g.phase === 'playing') {
+    Sound.play('bid');
+    Speech.say(spokenBid(b.quantity, b.face));
+  }
 
   // It just became your turn.
   if (g.phase === 'playing' && g.turnId === me && pg.turnId !== me) Sound.play('turn');

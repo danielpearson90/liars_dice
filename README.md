@@ -34,6 +34,10 @@ Sound effects (dice rolls, bids, challenges, wins/losses) are synthesized in the
 browser with the Web Audio API — no files to download. Toggle them with the
 🔊 button in the top-right corner.
 
+An optional voice (🗣️ button) reads bids and calls aloud — "4 fours", "liar",
+"spot on" — using the browser's built-in speech synthesis. Both toggles are
+independent and remembered between visits.
+
 ## Run it locally
 
 Requires Node.js 18+.

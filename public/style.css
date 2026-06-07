@@ -44,6 +44,8 @@ h2 { text-align: center; }
   border-radius: 50%; background: var(--panel); border: 1px solid #2b3654;
 }
 .mute:hover { filter: brightness(1.15); }
+.mute.speech { right: 62px; }
+.mute.btn-off { opacity: .4; }
 
 .card {
   background: var(--panel);
