@@ -107,6 +107,9 @@ npm test
 
 The game needs a public URL. The quickest options:
 
+> **Self-hosting on a Proxmox home server?** See **[DEPLOY.md](DEPLOY.md)** for a
+> full step-by-step (LXC + systemd + Cloudflare Tunnel, no open ports).
+
 ### Deploy to Render (free)
 
 1. Push this repo to GitHub.
