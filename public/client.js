@@ -1,5 +1,6 @@
 /* global io */
 import { pAtLeast } from './probability.js';
+import { bidKey, callKey } from './tts-keys.js';
 
 const socket = io();
 const MAX_STARTING_DICE = 20;
@@ -127,26 +128,44 @@ const Sound = (() => {
 })();
 
 // --- spoken announcements --------------------------------------------------
-// Reads bids and calls aloud with the browser's built-in speech synthesis.
-// Like the sound effects this is entirely client-side and offline.
+// Plays pre-generated Google Cloud TTS clips when available (see
+// scripts/gen-tts.mjs), and otherwise falls back to the browser's built-in
+// speech synthesis. Either way it stays entirely client-side.
 const Speech = (() => {
-  const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  const ttsCapable = typeof window !== 'undefined' && 'speechSynthesis' in window;
   let on = localStorage.getItem('ld_speech') === '1';
   let voice = null;
+  let clipKeys = null; // Set of available clip keys, once the manifest loads
+  let readyCb = null; // notified after the clip manifest has been checked
+  const clipCache = new Map(); // key -> preloaded Audio
 
   function pickVoice() {
-    if (!supported) return;
+    if (!ttsCapable) return;
     const voices = window.speechSynthesis.getVoices();
-    // Prefer an English voice, otherwise whatever the platform offers.
-    voice = voices.find((v) => /^en[-_]/i.test(v.lang)) || voices[0] || null;
+    // Prefer a natural-sounding English voice (Chrome/Android ship good ones).
+    voice =
+      voices.find((v) => /^en[-_]/i.test(v.lang) && /google|natural|neural/i.test(v.name)) ||
+      voices.find((v) => /^en[-_]/i.test(v.lang)) ||
+      voices[0] ||
+      null;
   }
-  if (supported) {
+  if (ttsCapable) {
     pickVoice();
     window.speechSynthesis.onvoiceschanged = pickVoice;
   }
 
-  function say(text) {
-    if (!on || !supported) return;
+  // Load the clip manifest (if clips were generated). Failure is fine — we just
+  // use the browser voice.
+  fetch('tts/manifest.json', { cache: 'no-cache' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((m) => {
+      if (m && Array.isArray(m.keys)) clipKeys = new Set(m.keys);
+    })
+    .catch(() => {})
+    .finally(() => readyCb && readyCb());
+
+  function speakBrowser(text) {
+    if (!ttsCapable) return;
     try {
       const u = new SpeechSynthesisUtterance(text);
       if (voice) u.voice = voice;
@@ -154,18 +173,41 @@ const Speech = (() => {
       u.pitch = 1;
       window.speechSynthesis.speak(u);
     } catch {
-      /* speech not available — ignore */
+      /* ignore */
     }
   }
 
+  function playClip(key) {
+    let audio = clipCache.get(key);
+    if (!audio) {
+      audio = new Audio(`tts/${key}.mp3`);
+      clipCache.set(key, audio);
+    }
+    audio.currentTime = 0;
+    audio.play().catch(() => {}); // ignore autoplay blocks before a gesture
+  }
+
+  // Speak `text`, preferring the pre-rendered clip `key` when it exists.
+  function say(text, key) {
+    if (!on) return;
+    if (key && clipKeys && clipKeys.has(key)) playClip(key);
+    else speakBrowser(text);
+  }
+
   return {
-    supported,
+    // Voice is usable if the browser can synthesize OR clips are available.
+    get available() {
+      return ttsCapable || (clipKeys && clipKeys.size > 0);
+    },
     say,
     isOn: () => on,
+    onReady(cb) {
+      readyCb = cb;
+    },
     toggle() {
       on = !on;
       localStorage.setItem('ld_speech', on ? '1' : '0');
-      if (!on && supported) window.speechSynthesis.cancel();
+      if (!on && ttsCapable) window.speechSynthesis.cancel();
       return on;
     },
   };
@@ -191,22 +233,21 @@ muteBtn.onclick = () => {
   if (!nowMuted) Sound.play('bid'); // little confirmation blip when unmuting
 };
 
-// Voice toggle button (hidden if the browser has no speech synthesis).
+// Voice toggle button. Hidden only if neither browser speech nor clips work;
+// it un-hides itself if clips load after first paint.
 const speechBtn = document.getElementById('speechBtn');
-if (!Speech.supported) {
-  speechBtn.classList.add('hidden');
-} else {
-  const paintSpeech = () => {
-    speechBtn.classList.toggle('btn-off', !Speech.isOn());
-    speechBtn.title = Speech.isOn() ? 'Voice on' : 'Voice off';
-  };
-  paintSpeech();
-  speechBtn.onclick = () => {
-    const nowOn = Speech.toggle();
-    paintSpeech();
-    if (nowOn) Speech.say('spot on'); // quick confirmation that voice works
-  };
+function paintSpeech() {
+  speechBtn.classList.toggle('hidden', !Speech.available);
+  speechBtn.classList.toggle('btn-off', !Speech.isOn());
+  speechBtn.title = Speech.isOn() ? 'Voice on' : 'Voice off';
 }
+paintSpeech();
+Speech.onReady(paintSpeech); // re-check once the clip manifest resolves
+speechBtn.onclick = () => {
+  const nowOn = Speech.toggle();
+  paintSpeech();
+  if (nowOn) Speech.say('spot on', callKey('spot-on')); // confirm it works
+};
 
 // --- theme switcher --------------------------------------------------------
 const THEMES = ['theme-tavern', 'theme-midnight', 'theme-neon', 'theme-deco', 'theme-noir', 'theme-pixel'];
@@ -330,7 +371,8 @@ function detectSounds(prev, state) {
   if ((g.phase === 'reveal' || g.phase === 'gameover') && pg.phase === 'playing' && g.lastReveal) {
     const r = g.lastReveal;
     Sound.play(r.kind === 'spot-on' ? 'spot' : 'challenge');
-    Speech.say(r.kind === 'spot-on' ? 'spot on' : 'liar');
+    const call = r.kind === 'spot-on' ? 'spot-on' : 'liar';
+    Speech.say(call === 'spot-on' ? 'spot on' : 'liar', callKey(call));
     const iLost = r.losers.includes(me);
     if (g.phase === 'gameover') {
       setTimeout(() => Sound.play(g.winnerId === me ? 'win' : 'defeat'), 420);
@@ -348,7 +390,7 @@ function detectSounds(prev, state) {
     b && (!pb || b.playerId !== pb.playerId || b.quantity !== pb.quantity || b.face !== pb.face);
   if (bidChanged && g.phase === 'playing') {
     Sound.play('bid');
-    Speech.say(spokenBid(b.quantity, b.face));
+    Speech.say(spokenBid(b.quantity, b.face), bidKey(b.quantity, b.face));
   }
 
   // It just became your turn.

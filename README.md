@@ -47,8 +47,27 @@ browser with the Web Audio API — no files to download. Toggle them with the
 🔊 button in the top-right corner.
 
 An optional voice (🗣️ button) reads bids and calls aloud — "4 fours", "liar",
-"spot on" — using the browser's built-in speech synthesis. Both toggles are
-independent and remembered between visits.
+"spot on". By default it uses the browser's built-in speech synthesis. Both
+toggles are independent and remembered between visits.
+
+#### Higher-quality voice (optional)
+
+For consistent, natural voices on every device you can pre-generate clips with
+**Google Cloud Text-to-Speech** — a one-time step that needs an API key only
+while generating (the server then just serves static `.mp3` files: fast,
+offline, no per-game API calls):
+
+```bash
+# Enable the "Cloud Text-to-Speech API" in a Google Cloud project, make an API
+# key, then:
+GOOGLE_TTS_API_KEY=xxxx npm run gen-tts
+```
+
+This writes `public/tts/*.mp3` + a `manifest.json`; the client plays a clip when
+one exists and falls back to the browser voice otherwise. Tunable via env vars
+(`TTS_VOICE`, `TTS_LANG`, `TTS_MAX_QUANTITY`, `TTS_RATE`) — see
+`scripts/gen-tts.mjs`. The clips are git-ignored, so commit them or copy
+`public/tts/` to your server to deploy them.
 
 ### Reconnecting
 

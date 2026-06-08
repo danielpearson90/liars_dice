@@ -2,3 +2,7 @@ node_modules/
 npm-debug.log*
 .env
 .DS_Store
+
+# Generated TTS voice clips (run `npm run gen-tts` to create them).
+# Commit them, or copy public/tts/ to your server, if you want them deployed.
+public/tts/
