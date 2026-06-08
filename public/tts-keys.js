@@ -2,11 +2,28 @@
 // Imported by both the client (clip playback) and scripts/gen-tts.mjs
 // (clip generation), so the keys and spoken text never drift apart.
 
-const FACE_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six'];
-
+const FACE_WORDS = ["", "one", "two", "three", "four", "five", "six"];
+const NUM_WORDS = [
+  "",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+  "thirteen",
+  "fourteen",
+  "fifteen",
+];
 /** Spoken text for a bid, e.g. (4,4) -> "4 fours", (1,6) -> "1 six". */
 export function bidText(quantity, face) {
-  return `${quantity} ${FACE_WORDS[face]}${quantity === 1 ? '' : 's'}`;
+  return `${NUM_WORDS[quantity]} ${FACE_WORDS[face]}${quantity === 1 ? "" : "s"}!`;
 }
 
 /** Stable clip key (and filename stem) for a bid, e.g. "bid-4-4". */
@@ -16,8 +33,8 @@ export function bidKey(quantity, face) {
 
 // The two callable actions and what they say.
 export const CALLS = {
-  liar: 'liar',
-  'spot-on': 'spot on',
+  liar: "liar",
+  "spot-on": "spot on",
 };
 
 /** Clip key for a call, e.g. "call-liar", "call-spot-on". */
