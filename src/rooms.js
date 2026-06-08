@@ -1,6 +1,11 @@
 // In-memory room registry. A room holds a lobby of players and, once started,
 // a running Game. Rooms live only in memory, so a server restart clears them.
+//
+// Each member has a public seat `id` (used by the game, shown to everyone) and
+// a private `token` supplied by the client. The token lets a player reclaim
+// their seat after a refresh or dropped connection; it is never sent to others.
 
+import { randomUUID } from 'node:crypto';
 import {
   Game,
   STARTING_DICE,
@@ -50,7 +55,7 @@ export class RoomManager {
 export class Room {
   constructor(code) {
     this.code = code;
-    /** @type {Map<string, {id: string, name: string, connected: boolean, isHost: boolean}>} */
+    /** @type {Map<string, {id, token, name, connected, isHost, socketId}>} keyed by seat id */
     this.members = new Map();
     this.hostId = null;
     this.game = null;
@@ -84,11 +89,29 @@ export class Room {
     return [...this.members.values()].every((m) => !m.connected);
   }
 
-  addMember(id, name) {
+  addMember(token, name, socketId) {
+    const id = randomUUID(); // public seat id
     const isHost = this.members.size === 0;
-    const member = { id, name, connected: true, isHost };
+    const member = { id, token: token || null, name, connected: true, isHost, socketId };
     this.members.set(id, member);
     if (isHost) this.hostId = id;
+    return member;
+  }
+
+  /** Find a member by its private reclaim token (null tokens never match). */
+  findByToken(token) {
+    if (!token) return null;
+    for (const m of this.members.values()) {
+      if (m.token === token) return m;
+    }
+    return null;
+  }
+
+  /** Reattach an existing member to a new socket (reconnection). */
+  reclaim(member, socketId, name) {
+    member.socketId = socketId;
+    member.connected = true;
+    if (name) member.name = name;
     return member;
   }
 

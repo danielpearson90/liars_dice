@@ -87,9 +87,26 @@ test('toView exposes settings to clients', () => {
 
 test('host reassignment when the host leaves the lobby', () => {
   const room = new Room('TEST');
-  room.addMember('a', 'Alice');
-  room.addMember('b', 'Bob');
-  assert.equal(room.hostId, 'a');
-  room.removeMember('a');
-  assert.equal(room.hostId, 'b');
+  const a = room.addMember('tokenA', 'Alice', 's1');
+  const b = room.addMember('tokenB', 'Bob', 's2');
+  assert.equal(room.hostId, a.id);
+  room.removeMember(a.id);
+  assert.equal(room.hostId, b.id);
+});
+
+test('a seat can be reclaimed by its token (reconnect)', () => {
+  const room = new Room('TEST');
+  const m = room.addMember('tok-1', 'Alice', 's1');
+  room.addMember('tok-2', 'Bob', 's2');
+  assert.equal(room.findByToken('tok-1'), m);
+  assert.equal(room.findByToken('nope'), null);
+  assert.equal(room.findByToken(null), null); // null tokens never match
+
+  // Simulate a drop then a reclaim with a new socket.
+  m.connected = false;
+  m.socketId = null;
+  const back = room.reclaim(room.findByToken('tok-1'), 's3', 'Alice');
+  assert.equal(back.id, m.id); // same seat
+  assert.equal(back.socketId, 's3');
+  assert.equal(back.connected, true);
 });

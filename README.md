@@ -50,6 +50,14 @@ An optional voice (🗣️ button) reads bids and calls aloud — "4 fours", "li
 "spot on" — using the browser's built-in speech synthesis. Both toggles are
 independent and remembered between visits.
 
+### Reconnecting
+
+Each player gets a private token saved in their browser, so a refresh or a
+dropped connection automatically **rejoins the same seat mid-game** — your dice
+and turn are right where you left them. Other players see an "Away" tag on a
+seat while its player is briefly disconnected. (Seats still live only in server
+memory, so a server restart ends the game.)
+
 ### Themes
 
 Pick a look from the selector in the top-left corner (remembered between

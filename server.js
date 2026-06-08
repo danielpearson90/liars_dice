@@ -21,14 +21,14 @@ const server = http.createServer(app);
 const io = new Server(server);
 const rooms = new RoomManager();
 
-// Track which room each socket belongs to for clean disconnect handling.
-/** @type {Map<string, {code: string, name: string}>} */
+// Map each live socket to its room code and seat id, for routing and cleanup.
+/** @type {Map<string, {code: string, id: string}>} */
 const socketInfo = new Map();
 
 function broadcastRoom(room) {
   for (const member of room.members.values()) {
-    if (!member.connected) continue;
-    io.to(member.id).emit('state', room.toView(member.id));
+    if (!member.connected || !member.socketId) continue;
+    io.to(member.socketId).emit('state', room.toView(member.id));
   }
 }
 
@@ -45,14 +45,18 @@ function handleLeave(socket) {
   if (!info) return;
   const room = rooms.getRoom(info.code);
   if (!room) return;
+  const member = room.members.get(info.id);
 
-  if (room.game) {
-    // Mid-game: keep the seat but mark disconnected so the board still renders.
-    const member = room.members.get(socket.id);
-    if (member) member.connected = false;
-  } else {
-    // In the lobby we can drop the seat entirely.
-    room.removeMember(socket.id);
+  // Ignore a stale disconnect for a seat that has already been reclaimed by a
+  // newer socket — only the member's current socket may drop the seat.
+  if (member && member.socketId === socket.id) {
+    if (room.game) {
+      // Mid-game: keep the seat (so it can be reclaimed) but mark disconnected.
+      member.connected = false;
+      member.socketId = null;
+    } else {
+      room.removeMember(info.id); // in the lobby, free the seat entirely
+    }
   }
 
   if (room.isEmpty()) {
@@ -65,86 +69,96 @@ function handleLeave(socket) {
 io.on('connection', (socket) => {
   const reply = (event, payload) => socket.emit(event, payload);
 
-  socket.on('create', ({ name }) => {
+  // Register a socket against a (possibly new) member and confirm the join.
+  const enter = (room, member) => {
+    socket.join(room.code);
+    socketInfo.set(socket.id, { code: room.code, id: member.id });
+    reply('joined', { code: room.code, you: member.id });
+    broadcastRoom(room);
+  };
+
+  socket.on('create', ({ name, token }) => {
     const clean = sanitizeName(name);
     if (!clean) return reply('errorMsg', 'Please enter a name.');
     const room = rooms.createRoom();
-    room.addMember(socket.id, clean);
-    socket.join(room.code);
-    socketInfo.set(socket.id, { code: room.code, name: clean });
-    reply('joined', { code: room.code, you: socket.id });
-    broadcastRoom(room);
+    enter(room, room.addMember(token, clean, socket.id));
   });
 
-  socket.on('join', ({ code, name }) => {
+  socket.on('join', ({ code, name, token }) => {
     const clean = sanitizeName(name);
     if (!clean) return reply('errorMsg', 'Please enter a name.');
     const room = rooms.getRoom(code);
     if (!room) return reply('errorMsg', 'No room with that code.');
+
+    // A matching token reclaims an existing seat — works mid-game too, which is
+    // how a refreshed or dropped player rejoins where they left off.
+    const existing = room.findByToken(token);
+    if (existing) {
+      return enter(room, room.reclaim(existing, socket.id, clean));
+    }
     if (room.game) return reply('errorMsg', 'That game has already started.');
     if (room.size >= MAX_PLAYERS) return reply('errorMsg', 'That room is full.');
-    room.addMember(socket.id, clean);
-    socket.join(room.code);
-    socketInfo.set(socket.id, { code: room.code, name: clean });
-    reply('joined', { code: room.code, you: socket.id });
-    broadcastRoom(room);
+    enter(room, room.addMember(token, clean, socket.id));
   });
+
+  // Look up the caller's room + seat id; null if they aren't seated.
+  const seat = () => {
+    const info = socketInfo.get(socket.id);
+    const room = info && rooms.getRoom(info.code);
+    return room ? { room, id: info.id } : null;
+  };
 
   // Wrap an engine action so any thrown rule violation becomes an error toast
   // for just the acting player, and a successful action rebroadcasts state.
   const withGame = (fn) => () => {
-    const info = socketInfo.get(socket.id);
-    const room = info && rooms.getRoom(info.code);
-    if (!room || !room.game) return;
+    const s = seat();
+    if (!s || !s.room.game) return;
     try {
-      fn(room);
-      broadcastRoom(room);
+      fn(s.room, s.id);
+      broadcastRoom(s.room);
     } catch (err) {
       reply('errorMsg', err.message);
     }
   };
 
-  // Host adjusts room options in the lobby (starting dice, probability display).
+  // Host adjusts room options in the lobby (starting dice, probability, ruleset).
   socket.on('updateSettings', (partial) => {
-    const info = socketInfo.get(socket.id);
-    const room = info && rooms.getRoom(info.code);
-    if (!room) return;
-    if (room.hostId !== socket.id) return reply('errorMsg', 'Only the host can change settings.');
-    if (room.game) return reply('errorMsg', 'Settings are locked once the game starts.');
-    room.updateSettings(partial || {});
-    broadcastRoom(room);
+    const s = seat();
+    if (!s) return;
+    if (s.room.hostId !== s.id) return reply('errorMsg', 'Only the host can change settings.');
+    if (s.room.game) return reply('errorMsg', 'Settings are locked once the game starts.');
+    s.room.updateSettings(partial || {});
+    broadcastRoom(s.room);
   });
 
   socket.on('start', () => {
-    const info = socketInfo.get(socket.id);
-    const room = info && rooms.getRoom(info.code);
-    if (!room) return;
-    if (room.hostId !== socket.id) return reply('errorMsg', 'Only the host can start.');
-    if (room.size < 2) return reply('errorMsg', 'Need at least 2 players.');
-    if (room.game) return;
+    const s = seat();
+    if (!s) return;
+    if (s.room.hostId !== s.id) return reply('errorMsg', 'Only the host can start.');
+    if (s.room.size < 2) return reply('errorMsg', 'Need at least 2 players.');
+    if (s.room.game) return;
     try {
-      room.startGame();
-      broadcastRoom(room);
+      s.room.startGame();
+      broadcastRoom(s.room);
     } catch (err) {
       reply('errorMsg', err.message);
     }
   });
 
   socket.on('bid', ({ quantity, face }) =>
-    withGame((room) => room.game.bid(socket.id, quantity, face))()
+    withGame((room, id) => room.game.bid(id, quantity, face))()
   );
-  socket.on('challenge', withGame((room) => room.game.challenge(socket.id)));
-  socket.on('spotOn', withGame((room) => room.game.spotOn(socket.id)));
+  socket.on('challenge', withGame((room, id) => room.game.challenge(id)));
+  socket.on('spotOn', withGame((room, id) => room.game.spotOn(id)));
 
   // Anyone may advance past the reveal screen once it is showing.
   socket.on('nextRound', () => {
-    const info = socketInfo.get(socket.id);
-    const room = info && rooms.getRoom(info.code);
-    if (!room || !room.game) return;
+    const s = seat();
+    if (!s || !s.room.game) return;
     try {
-      if (room.game.phase === 'reveal') {
-        room.game.nextRound();
-        broadcastRoom(room);
+      if (s.room.game.phase === 'reveal') {
+        s.room.game.nextRound();
+        broadcastRoom(s.room);
       }
     } catch (err) {
       reply('errorMsg', err.message);
@@ -153,13 +167,12 @@ io.on('connection', (socket) => {
 
   // Host can start a brand-new game with the same lobby after game over.
   socket.on('rematch', () => {
-    const info = socketInfo.get(socket.id);
-    const room = info && rooms.getRoom(info.code);
-    if (!room || room.hostId !== socket.id) return;
-    if (room.game && room.game.phase !== 'gameover') return;
-    if (room.size < 2) return reply('errorMsg', 'Need at least 2 players.');
-    room.startGame();
-    broadcastRoom(room);
+    const s = seat();
+    if (!s || s.room.hostId !== s.id) return;
+    if (s.room.game && s.room.game.phase !== 'gameover') return;
+    if (s.room.size < 2) return reply('errorMsg', 'Need at least 2 players.');
+    s.room.startGame();
+    broadcastRoom(s.room);
   });
 
   socket.on('leave', () => handleLeave(socket));

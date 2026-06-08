@@ -402,16 +402,49 @@ function dieEl(value, { small = false, highlight = false } = {}) {
   return d;
 }
 
+// --- identity & reconnection ----------------------------------------------
+// A stable private token identifies this player across reconnects. The server
+// keys seats by it, so a refresh or dropped connection reclaims the same seat.
+const token = (() => {
+  let t = localStorage.getItem('ld_pid');
+  if (!t) {
+    t = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random()).slice(2);
+    localStorage.setItem('ld_pid', t);
+  }
+  return t;
+})();
+let myName = localStorage.getItem('ld_name') || '';
+let reconnectTarget = localStorage.getItem('ld_room') || null; // room to auto-rejoin
+let autoRejoining = false;
+
+function rememberRoom(code) {
+  reconnectTarget = code;
+  localStorage.setItem('ld_room', code);
+}
+function forgetRoom() {
+  reconnectTarget = null;
+  autoRejoining = false;
+  localStorage.removeItem('ld_room');
+}
+
 // --- home screen -----------------------------------------------------------
-$('createBtn').onclick = () => socket.emit('create', { name: $('name').value });
-$('joinBtn').onclick = () =>
-  socket.emit('join', { code: $('code').value, name: $('name').value });
+$('createBtn').onclick = () => {
+  myName = $('name').value;
+  socket.emit('create', { name: myName, token });
+};
+$('joinBtn').onclick = () => {
+  myName = $('name').value;
+  socket.emit('join', { code: $('code').value, name: myName, token });
+};
 
 // Prefill room code & name from URL (?room=ABCD) and localStorage.
 const params = new URLSearchParams(location.search);
 if (params.get('room')) $('code').value = params.get('room').toUpperCase();
-$('name').value = localStorage.getItem('ld_name') || '';
-$('name').oninput = () => localStorage.setItem('ld_name', $('name').value.trim());
+$('name').value = myName;
+$('name').oninput = () => {
+  myName = $('name').value.trim();
+  localStorage.setItem('ld_name', myName);
+};
 
 // --- lobby -----------------------------------------------------------------
 $('startBtn').onclick = () => socket.emit('start');
@@ -489,16 +522,45 @@ function leave() {
   socket.emit('leave');
   me = null;
   lastState = null;
+  forgetRoom();
   history.replaceState(null, '', location.pathname);
   show('home');
 }
 
+function setNetStatus(text) {
+  const el = $('netStatus');
+  el.textContent = text || '';
+  el.classList.toggle('hidden', !text);
+}
+
 // --- socket events ---------------------------------------------------------
+// On every (re)connection, automatically reclaim our seat if we were in a room.
+socket.on('connect', () => {
+  setNetStatus('');
+  if (reconnectTarget && myName) {
+    autoRejoining = true;
+    socket.emit('join', { code: reconnectTarget, name: myName, token });
+  }
+});
+socket.on('disconnect', () => {
+  if (reconnectTarget) setNetStatus('Connection lost — reconnecting…');
+});
+
 socket.on('joined', ({ code, you }) => {
   me = you;
+  autoRejoining = false;
+  rememberRoom(code);
   history.replaceState(null, '', `/?room=${code}`);
 });
 socket.on('errorMsg', (msg) => {
+  // If an automatic rejoin fails (e.g. the room is gone after a restart), drop
+  // the stale target and fall back to the home screen instead of nagging.
+  if (autoRejoining && !lastState) {
+    forgetRoom();
+    setNetStatus('');
+    show('home');
+    return;
+  }
   Sound.play('error');
   toast(msg);
 });
@@ -620,11 +682,15 @@ function renderPlayers(state) {
   const g = state.game;
   const box = $('players');
   box.innerHTML = '';
+  // Seats whose player is currently disconnected (awaiting reconnect).
+  const away = new Set((state.members || []).filter((m) => !m.connected).map((m) => m.id));
   for (const p of g.players) {
     const row = document.createElement('div');
     row.className = 'player';
     if (g.turnId === p.id && g.phase === 'playing') row.classList.add('turn');
     if (p.eliminated) row.classList.add('out');
+    const isAway = away.has(p.id) && !p.eliminated;
+    if (isAway) row.classList.add('away');
 
     const name = document.createElement('span');
     name.className = 'pname';
@@ -635,6 +701,7 @@ function renderPlayers(state) {
     tags.className = 'tags';
     if (state.hostId === p.id) tags.appendChild(badge('Host'));
     if (p.eliminated) tags.appendChild(badge('Out', 'off'));
+    if (isAway) tags.appendChild(badge('Away', 'away'));
     row.appendChild(tags);
 
     // The player's current standing bid, shown next to their name and

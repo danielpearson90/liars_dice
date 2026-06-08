@@ -236,6 +236,16 @@ button.small { padding: 8px 12px; font-size: .85rem; }
   box-shadow: 0 8px 30px rgba(0, 0, 0, .4);
 }
 
+/* Reconnection banner */
+.net-status {
+  position: fixed; left: 50%; top: 18px; transform: translateX(-50%);
+  background: var(--warn); color: var(--ink-warn); font-weight: 700;
+  padding: 10px 16px; border-radius: 10px; z-index: 55;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .4);
+}
+.player.away { opacity: .55; }
+.badge.away { background: var(--warn); color: var(--ink-warn); }
+
 /* ===========================================================================
    Lobby
    =========================================================================== */
