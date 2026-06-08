@@ -283,9 +283,6 @@ button.small { padding: 8px 12px; font-size: .85rem; }
 .player .pname { font-weight: 600; flex: 0 0 auto; }
 .player .tags { display: flex; gap: 6px; flex-wrap: wrap; }
 
-.player .bid-prob {
-  color: var(--muted); font-size: .82rem; font-weight: 600; white-space: nowrap;
-}
 .player .bid-chip {
   display: flex; align-items: center; gap: 5px;
   background: var(--accent-2); border: 1px solid var(--accent);
@@ -381,6 +378,10 @@ body.theme-neon .die .pip { box-shadow: 0 0 6px var(--die-pip); }
 .cb-qty { font-family: var(--font-display); font-size: 2.7rem; font-weight: 800; line-height: 1; color: var(--accent); }
 .cb-times { font-size: 1.5rem; color: var(--muted); }
 .cb-none { font-size: 1.1rem; color: var(--muted); font-style: italic; padding: 4px 0; }
+.cb-prob {
+  font-size: .82rem; font-weight: 700; letter-spacing: .02em;
+  color: var(--accent); white-space: nowrap;
+}
 .cb-by { font-size: .82rem; color: var(--muted); }
 .current-bid .die { width: 54px; height: 54px; }
 

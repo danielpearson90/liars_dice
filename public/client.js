@@ -569,7 +569,7 @@ function renderGame(state) {
   $('roundLabel').textContent = `Round ${g.roundNumber}`;
 
   renderPlayers(state);
-  renderCurrentBid(g);
+  renderCurrentBid(state);
   renderMyDice(g);
   renderReveal(g);
 
@@ -629,16 +629,6 @@ function renderPlayers(state) {
       chip.appendChild(qty);
       chip.appendChild(dieEl(p.lastBid.face, { small: true }));
       row.appendChild(chip);
-
-      // Optional global probability that the bid is true (all dice unknown).
-      if (state.settings && state.settings.showProbability) {
-        const n = g.totalDice;
-        const pct = Math.round(pAtLeast(p.lastBid.quantity, n) * 100);
-        const prob = document.createElement('span');
-        prob.className = 'bid-prob';
-        prob.textContent = `${pct}% with ${n} dice`;
-        row.appendChild(prob);
-      }
     }
 
     const dots = document.createElement('span');
@@ -662,7 +652,8 @@ function renderPlayers(state) {
 let cbKey = null; // identifies the currently displayed bid, to trigger a pop
 
 // The bid to beat, shown as a centerpiece directly above the player's dice.
-function renderCurrentBid(g) {
+function renderCurrentBid(state) {
+  const g = state.game;
   const box = $('currentBid');
   if (g.phase !== 'playing') {
     box.classList.add('hidden');
@@ -697,6 +688,16 @@ function renderCurrentBid(g) {
   times.textContent = '×';
   main.append(qty, times, dieEl(b.face));
   box.appendChild(main);
+
+  // Global odds the bid is true (all dice unknown), if the host enabled it.
+  if (state.settings && state.settings.showProbability) {
+    const n = g.totalDice;
+    const pct = Math.round(pAtLeast(b.quantity, n) * 100);
+    const prob = document.createElement('div');
+    prob.className = 'cb-prob';
+    prob.textContent = `${pct}% chance · ${n} dice`;
+    box.appendChild(prob);
+  }
 
   const who = g.players.find((p) => p.id === b.playerId);
   if (who) {
