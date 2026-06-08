@@ -52,22 +52,34 @@ toggles are independent and remembered between visits.
 
 #### Higher-quality voice (optional)
 
-For consistent, natural voices on every device you can pre-generate clips with
-**Google Cloud Text-to-Speech** — a one-time step that needs an API key only
-while generating (the server then just serves static `.mp3` files: fast,
-offline, no per-game API calls):
+For consistent, natural voices on every device you can pre-generate clips — a
+one-time step that needs an API key only while generating (the server then just
+serves static audio files: fast, offline, no per-game API calls). The client
+plays a clip when one exists and falls back to the browser voice otherwise.
+Clips are git-ignored, so commit them or copy `public/tts/` to your server to
+deploy them.
+
+**Google Cloud Text-to-Speech** (MP3, stable, generous free tier):
 
 ```bash
-# Enable the "Cloud Text-to-Speech API" in a Google Cloud project, make an API
-# key, then:
+# Enable the "Cloud Text-to-Speech API", make an API key, then:
 GOOGLE_TTS_API_KEY=xxxx npm run gen-tts
+# Tunable: TTS_VOICE (en-US-Neural2-D), TTS_LANG, TTS_RATE, TTS_MAX_QUANTITY
 ```
 
-This writes `public/tts/*.mp3` + a `manifest.json`; the client plays a clip when
-one exists and falls back to the browser voice otherwise. Tunable via env vars
-(`TTS_VOICE`, `TTS_LANG`, `TTS_MAX_QUANTITY`, `TTS_RATE`) — see
-`scripts/gen-tts.mjs`. The clips are git-ignored, so commit them or copy
-`public/tts/` to your server to deploy them.
+**Gemini TTS** (WAV, expressive + prompt-steerable) — e.g. a boomy fighting-game
+announcer:
+
+```bash
+TTS_PROVIDER=gemini GEMINI_API_KEY=xxxx \
+  GEMINI_TTS_MODEL=gemini-3.1-flash-tts-preview GEMINI_VOICE=Algenib \
+  npm run gen-tts
+# Style comes from GEMINI_STYLE (default: deep, boomy, gravelly, punchy
+# announcer — hyped, natural pace, neutral accent). Override to taste.
+```
+
+The manifest records the format (`mp3`/`wav`) so the client loads the right
+files automatically. See `scripts/gen-tts.mjs` for all options.
 
 ### Reconnecting
 

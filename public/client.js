@@ -136,6 +136,7 @@ const Speech = (() => {
   let on = localStorage.getItem('ld_speech') === '1';
   let voice = null;
   let clipKeys = null; // Set of available clip keys, once the manifest loads
+  let clipExt = 'mp3'; // clip file extension from the manifest (mp3 or wav)
   let readyCb = null; // notified after the clip manifest has been checked
   const clipCache = new Map(); // key -> preloaded Audio
 
@@ -159,7 +160,10 @@ const Speech = (() => {
   fetch('tts/manifest.json', { cache: 'no-cache' })
     .then((r) => (r.ok ? r.json() : null))
     .then((m) => {
-      if (m && Array.isArray(m.keys)) clipKeys = new Set(m.keys);
+      if (m && Array.isArray(m.keys)) {
+        clipKeys = new Set(m.keys);
+        if (m.ext) clipExt = m.ext;
+      }
     })
     .catch(() => {})
     .finally(() => readyCb && readyCb());
@@ -180,7 +184,7 @@ const Speech = (() => {
   function playClip(key) {
     let audio = clipCache.get(key);
     if (!audio) {
-      audio = new Audio(`tts/${key}.mp3`);
+      audio = new Audio(`tts/${key}.${clipExt}`);
       clipCache.set(key, audio);
     }
     audio.currentTime = 0;
