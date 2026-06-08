@@ -717,9 +717,14 @@ function renderCurrentBid(state) {
 
 function renderMyDice(g) {
   const box = $('myDice');
+  const cap = $('myDiceCap');
   box.innerHTML = '';
   const you = g.players.find((p) => p.isYou);
-  if (!you || !you.dice || you.eliminated) return;
+  if (!you || !you.dice || you.eliminated) {
+    cap.classList.add('hidden');
+    return;
+  }
+  cap.classList.remove('hidden');
   const animate = pendingRoll; // only tumble right after a fresh deal
   pendingRoll = false;
   you.dice.forEach((v, i) => {

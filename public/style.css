@@ -327,7 +327,11 @@ body.theme-neon .die .pip { box-shadow: 0 0 6px var(--die-pip); }
 }
 .die.rolling { animation: tumble .55s cubic-bezier(.2, .8, .3, 1.2) both; }
 
-.my-dice { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 8px 0 18px; min-height: 46px; }
+.hand-cap {
+  text-align: center; margin: 6px 0 8px;
+  font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: var(--muted);
+}
+.my-dice { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 0 0 18px; min-height: 46px; }
 
 /* ===========================================================================
    Controls
