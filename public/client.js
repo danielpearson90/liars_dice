@@ -428,6 +428,8 @@ $('diceUp').onclick = () =>
   socket.emit('updateSettings', { startingDice: Math.min(MAX_STARTING_DICE, currentDice() + 1) });
 $('probToggle').onchange = (e) =>
   socket.emit('updateSettings', { showProbability: e.target.checked });
+$('rulesetSelect').onchange = (e) =>
+  socket.emit('updateSettings', { ruleset: e.target.value });
 $('copyCode').onclick = () => {
   const url = `${location.origin}/?room=${lastState.code}`;
   navigator.clipboard?.writeText(url).then(
@@ -546,7 +548,23 @@ function renderLobby(state) {
     : 'Waiting for the host to start the game.';
 
   // Reflect current settings; only the host can change them.
-  const s = state.settings || { startingDice: 5, showProbability: false };
+  const s = state.settings || { startingDice: 5, showProbability: false, ruleset: '' };
+
+  // Ruleset selector — options come from the server so they can't drift.
+  const rs = $('rulesetSelect');
+  if (rs.options.length === 0 && state.rulesets) {
+    for (const r of state.rulesets) {
+      const o = document.createElement('option');
+      o.value = r.id;
+      o.textContent = r.name;
+      rs.appendChild(o);
+    }
+  }
+  rs.value = s.ruleset;
+  rs.disabled = !amHost;
+  const chosen = (state.rulesets || []).find((r) => r.id === s.ruleset);
+  $('rulesetDesc').textContent = chosen ? chosen.desc : '';
+
   $('diceVal').firstElementChild.textContent = s.startingDice;
   $('probToggle').checked = !!s.showProbability;
   for (const el of [$('diceDown'), $('diceUp'), $('probToggle')]) el.disabled = !amHost;
@@ -690,11 +708,14 @@ function renderCurrentBid(state) {
   box.appendChild(main);
 
   // Global odds the bid is true (all dice unknown), if the host enabled it.
+  // With a wilds ruleset, any non-1 face is satisfied by that face OR a 1,
+  // so each unknown die succeeds with probability 2/6 rather than 1/6.
   if (state.settings && state.settings.showProbability) {
     const n = g.totalDice;
+    const wild = g.ruleset && g.ruleset.wilds && b.face !== 1;
     const prob = document.createElement('div');
     prob.className = 'cb-prob';
-    prob.textContent = `${formatPct(pAtLeast(b.quantity, n))}% chance · ${n} dice`;
+    prob.textContent = `${formatPct(pAtLeast(b.quantity, n, wild ? 2 / 6 : 1 / 6))}% chance · ${n} dice`;
     box.appendChild(prob);
   }
 
@@ -791,24 +812,35 @@ function renderReveal(g) {
   box.appendChild(h);
 
   const caller = name(g, r.callerId);
+  const callerYou = caller === 'You';
   const result = document.createElement('div');
   result.className = 'result';
   const bidStr = `${r.quantity} × ${faceName(r.face)}`;
+  const countLine =
+    `There ${r.actual === 1 ? 'was' : 'were'} <b>${r.actual}</b> ` +
+    `${faceName(r.face)}${r.actual === 1 ? '' : 's'}${r.countsWild ? ' (1s wild)' : ''}. `;
+
   if (r.kind === 'challenge') {
     const bidGood = r.actual >= r.quantity;
     result.classList.add(bidGood ? 'bad' : 'good');
     result.innerHTML =
       `${caller} challenged <b>${bidStr}</b>.<br>` +
-      `There ${r.actual === 1 ? 'was' : 'were'} <b>${r.actual}</b> ` +
-      `${faceName(r.face)}${r.actual === 1 ? '' : 's'}. ` +
+      countLine +
       (bidGood ? 'The bid held — challenger loses a die.' : 'It was a lie — bidder loses a die.');
   } else {
     result.classList.add(r.exact ? 'good' : 'bad');
+    let outcome;
+    if (!r.exact) {
+      outcome = 'Not exact — caller loses a die.';
+    } else if (r.gainerId) {
+      outcome = r.gainerCapped
+        ? `Exactly right — but ${caller} ${callerYou ? 'are' : 'is'} already at full dice.`
+        : `Exactly right — ${caller} ${callerYou ? 'win' : 'wins'} a die back!`;
+    } else {
+      outcome = 'Exactly right — everyone else loses a die!';
+    }
     result.innerHTML =
-      `${caller} called spot-on for <b>${bidStr}</b>.<br>` +
-      `There ${r.actual === 1 ? 'was' : 'were'} <b>${r.actual}</b> ` +
-      `${faceName(r.face)}${r.actual === 1 ? '' : 's'}. ` +
-      (r.exact ? 'Exactly right — everyone else loses a die!' : 'Not exact — caller loses a die.');
+      `${caller} called spot-on for <b>${bidStr}</b>.<br>` + countLine + outcome;
   }
   box.appendChild(result);
 
@@ -820,7 +852,9 @@ function renderReveal(g) {
     nm.textContent = entry.name;
     row.appendChild(nm);
     for (const v of entry.dice) {
-      row.appendChild(dieEl(v, { small: true, highlight: v === r.face }));
+      // Highlight dice that count toward the bid: the face itself, plus wild 1s.
+      const counts = v === r.face || (r.countsWild && v === 1);
+      row.appendChild(dieEl(v, { small: true, highlight: counts }));
     }
     box.appendChild(row);
   }

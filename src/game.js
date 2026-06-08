@@ -1,22 +1,23 @@
 // Pure game engine for Liar's Dice.
 //
-// Ruleset implemented:
+// Core flow (shared by every ruleset):
 //   - Each player starts with the same number of dice (configurable, 1..20).
 //   - On a player's turn they may either RAISE the current bid or, if a bid
 //     already exists, CHALLENGE it ("liar") or call SPOT-ON ("exact").
 //   - A bid is a (quantity, face) pair claiming that AT LEAST `quantity` dice
-//     across the whole table show `face`. There are NO wilds: a 1 only counts
-//     as a 1.
-//   - A raise must strictly out-rank the current bid: a higher quantity, or
-//     the same quantity with a higher face.
+//     across the whole table satisfy `face`. A raise must strictly out-rank the
+//     current bid: a higher quantity, or the same quantity with a higher face.
 //   - CHALLENGE: reveal all dice and count the bid face.
 //       * actual >= quantity  -> the bid was good, the challenger loses a die.
 //       * actual <  quantity  -> the bid was a lie, the bidder loses a die.
-//   - SPOT-ON: the caller claims the count is EXACTLY the bid quantity.
-//       * actual == quantity  -> caller is right, every OTHER active player
-//         loses a die.
-//       * actual != quantity  -> caller is wrong, the caller loses a die.
+//   - A wrong SPOT-ON always costs the caller a die.
 //   - A player with 0 dice is eliminated. Last player standing wins.
+//
+// Rulesets (see RULESETS) vary two things:
+//   - wilds:        whether 1s count toward any non-1 face when counting.
+//   - spotOnReward: what a correct Spot-on does — every other player loses a
+//                   die ('others-lose'), or the caller wins one back
+//                   ('caller-regains').
 //
 // The engine is deterministic given an injected RNG, which keeps it testable.
 
@@ -37,18 +38,62 @@ export function clampStartingDice(n) {
   return Math.max(1, Math.min(MAX_STARTING_DICE, n));
 }
 
+// Selectable rulesets. They vary on two independent dimensions:
+//   - wilds: whether 1s count as every face when a bid is counted.
+//   - spotOnReward: what a correct Spot-on call does —
+//       'others-lose'    -> every other active player loses a die.
+//       'caller-regains' -> the caller wins a die back (up to the start count).
+// (A wrong Spot-on always costs the caller a die.)
+export const RULESETS = {
+  'common-hand': {
+    id: 'common-hand',
+    name: 'Common Hand',
+    desc: '1s count only as 1s. Exact Spot-on → everyone else loses a die.',
+    wilds: false,
+    spotOnReward: 'others-lose',
+  },
+  'aces-wild': {
+    id: 'aces-wild',
+    name: 'Aces Wild',
+    desc: '1s are wild and count as every face. Exact Spot-on → everyone else loses a die.',
+    wilds: true,
+    spotOnReward: 'others-lose',
+  },
+  'spot-regain': {
+    id: 'spot-regain',
+    name: 'Spot-on regains a die',
+    desc: 'No wilds. A correct Spot-on wins the caller a die back instead.',
+    wilds: false,
+    spotOnReward: 'caller-regains',
+  },
+};
+
+export const DEFAULT_RULESET = 'common-hand';
+
+/** Resolve a ruleset id to its config, falling back to the default. */
+export function resolveRuleset(id) {
+  return RULESETS[id] || RULESETS[DEFAULT_RULESET];
+}
+
+/** The rulesets a lobby can offer, as lightweight {id, name, desc} entries. */
+export function listRulesets() {
+  return Object.values(RULESETS).map(({ id, name, desc }) => ({ id, name, desc }));
+}
+
 export class Game {
   /**
    * @param {Array<{id: string, name: string}>} players seating order
    * @param {() => number} [rng] returns a float in [0, 1)
    * @param {number} [startingDice] dice each player begins with (1..20)
+   * @param {string} [rulesetId] which ruleset to play (see RULESETS)
    */
-  constructor(players, rng = defaultRng, startingDice = STARTING_DICE) {
+  constructor(players, rng = defaultRng, startingDice = STARTING_DICE, rulesetId = DEFAULT_RULESET) {
     if (players.length < 2) {
       throw new Error('Need at least 2 players to start.');
     }
     this.rng = rng;
     this.startingDice = clampStartingDice(startingDice);
+    this.ruleset = resolveRuleset(rulesetId);
     this.players = players.map((p) => ({
       id: p.id,
       name: p.name,
@@ -152,12 +197,21 @@ export class Game {
     return false;
   }
 
-  /** Count how many dice across all active players show `face`. No wilds. */
+  /** Whether 1s count toward a bid on `face` (wild), given the ruleset. */
+  wildsApply(face) {
+    return this.ruleset.wilds && face !== 1;
+  }
+
+  /**
+   * Count dice across all active players that satisfy a bid on `face`. With a
+   * wilds ruleset, 1s also count toward any non-1 face (a 1 bid counts only 1s).
+   */
   countFace(face) {
+    const wild = this.wildsApply(face);
     let count = 0;
     for (const p of this.activePlayers()) {
       for (const d of p.dice) {
-        if (d === face) count += 1;
+        if (d === face || (wild && d === 1)) count += 1;
       }
     }
     return count;
@@ -180,6 +234,7 @@ export class Game {
       quantity,
       face,
       actual,
+      countsWild: this.wildsApply(face),
       losers: [loserId],
     });
   }
@@ -193,11 +248,8 @@ export class Game {
     const { quantity, face, playerId: bidderId } = this.currentBid;
     const actual = this.countFace(face);
     const exact = actual === quantity;
-    // Right: every other active player loses a die. Wrong: caller loses a die.
-    const losers = exact
-      ? this.activePlayers().filter((p) => p.id !== playerId).map((p) => p.id)
-      : [playerId];
-    return this.resolveReveal({
+
+    const reveal = {
       kind: 'spot-on',
       callerId: playerId,
       bidderId,
@@ -205,8 +257,21 @@ export class Game {
       face,
       actual,
       exact,
-      losers,
-    });
+      countsWild: this.wildsApply(face),
+      reward: this.ruleset.spotOnReward,
+      losers: [],
+    };
+    if (!exact) {
+      // A wrong call always costs the caller a die, regardless of ruleset.
+      reveal.losers = [playerId];
+    } else if (this.ruleset.spotOnReward === 'caller-regains') {
+      // The caller wins a die back (capped at the starting count); nobody loses.
+      reveal.gainerId = playerId;
+    } else {
+      // Default: every other active player loses a die.
+      reveal.losers = this.activePlayers().filter((p) => p.id !== playerId).map((p) => p.id);
+    }
+    return this.resolveReveal(reveal);
   }
 
   // --- reveal / scoring ----------------------------------------------------
@@ -227,6 +292,16 @@ export class Game {
       if (loser.diceCount <= 0) {
         loser.diceCount = 0;
         loser.eliminated = true;
+      }
+    }
+
+    // Apply a die gain (Spot-on regains), capped at the starting count.
+    if (reveal.gainerId) {
+      const gainer = this.getPlayer(reveal.gainerId);
+      if (gainer && !gainer.eliminated && gainer.diceCount < this.startingDice) {
+        gainer.diceCount += 1;
+      } else {
+        reveal.gainerCapped = true; // already at max — no die changed hands
       }
     }
 
@@ -289,6 +364,12 @@ export class Game {
       turnId: this.turnId,
       winnerId: this.winnerId,
       totalDice: this.totalDiceInPlay(),
+      ruleset: {
+        id: this.ruleset.id,
+        name: this.ruleset.name,
+        wilds: this.ruleset.wilds,
+        spotOnReward: this.ruleset.spotOnReward,
+      },
       lastReveal: this.lastReveal,
       players: this.players.map((p) => ({
         id: p.id,

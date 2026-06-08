@@ -18,17 +18,29 @@ laptop — no installs, no accounts.
   - Count ≥ the bid → the bid held, the **challenger** loses a die.
   - Count < the bid → it was a lie, the **bidder** loses a die.
 - **Spot on! (exact):** you claim the count is *exactly* the bid quantity.
-  - Exactly right → **every other player** loses a die.
   - Wrong → **you** lose a die.
+  - Exactly right → depends on the ruleset (see below).
 - Lose your last die and you're out. **Last player standing wins.**
 - The player who **opens** the bidding rotates one seat each round.
+
+### Rulesets (chosen by the host)
+
+The host picks one of these in the lobby; it's applied when the game starts:
+
+- **Common Hand** (default) — no wilds (a 1 is only a 1); a correct Spot-on
+  makes **every other player** lose a die.
+- **Aces Wild** — 1s are **wild** and count as every face when dice are counted
+  (a bid *on* 1s still counts only literal 1s); Spot-on as above. The popular
+  video-game version.
+- **Spot-on regains a die** — no wilds, but a correct Spot-on wins the **caller**
+  a die back (up to the starting count) instead of others losing one.
 
 ### Lobby options (set by the host)
 
 - **Starting dice per player** — anywhere from 1 to 20.
-- **Show bid probabilities** — when on, each player's standing bid is annotated
-  with the odds it's true, e.g. `23% with 20 dice`. This is the *global* chance
-  (every die treated as unknown), so it's the same for everyone at the table.
+- **Show bid probabilities** — when on, the central bid placard shows the odds
+  the bid is true, e.g. `23% chance · 20 dice`. It's the *global* chance (every
+  die treated as unknown, and adjusted for wilds), the same for everyone.
 
 Sound effects (dice rolls, bids, challenges, wins/losses) are synthesized in the
 browser with the Web Audio API — no files to download. Toggle them with the

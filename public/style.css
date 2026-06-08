@@ -265,6 +265,13 @@ button.small { padding: 8px 12px; font-size: .85rem; }
 .small-stepper button { width: 36px; height: 36px; font-size: 1.2rem; }
 .small-stepper .stepper-value { min-width: 36px; }
 .small-stepper .stepper-value span { font-size: 1.3rem; }
+.lobby-select {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border-2); border-radius: 10px;
+  padding: 8px 12px; font-size: .95rem; font-family: var(--font-body); cursor: pointer;
+}
+.lobby-select:disabled { opacity: .6; cursor: default; }
+.ruleset-desc { text-align: left; margin: -2px 0 2px; font-style: italic; }
 
 /* ===========================================================================
    Game board
