@@ -692,10 +692,9 @@ function renderCurrentBid(state) {
   // Global odds the bid is true (all dice unknown), if the host enabled it.
   if (state.settings && state.settings.showProbability) {
     const n = g.totalDice;
-    const pct = Math.round(pAtLeast(b.quantity, n) * 100);
     const prob = document.createElement('div');
     prob.className = 'cb-prob';
-    prob.textContent = `${pct}% chance · ${n} dice`;
+    prob.textContent = `${formatPct(pAtLeast(b.quantity, n))}% chance · ${n} dice`;
     box.appendChild(prob);
   }
 
@@ -834,4 +833,14 @@ function name(g, id) {
 
 function faceName(f) {
   return ['', 'one', 'two', 'three', 'four', 'five', 'six'][f] || f;
+}
+
+// Format a probability (0..1) as a percentage string, keeping at least one
+// significant figure so small-but-nonzero odds don't collapse to "0".
+// e.g. 0.5 -> "50", 0.123 -> "12", 0.004 -> "0.4", 0.00006 -> "0.006".
+function formatPct(p) {
+  const pct = p * 100;
+  if (pct <= 0) return '0';
+  if (pct >= 1) return String(Math.round(pct));
+  return String(Number(pct.toPrecision(1)));
 }
