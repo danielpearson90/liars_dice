@@ -209,7 +209,7 @@ if (!Speech.supported) {
 }
 
 // --- theme switcher --------------------------------------------------------
-const THEMES = ['theme-tavern', 'theme-midnight', 'theme-neon'];
+const THEMES = ['theme-tavern', 'theme-midnight', 'theme-neon', 'theme-deco', 'theme-noir', 'theme-pixel'];
 const themeSelect = document.getElementById('themeSelect');
 function applyTheme(name) {
   if (!THEMES.includes(name)) name = THEMES[0];

@@ -74,6 +74,15 @@ visits):
 - **🌆 Neon** — a synthwave arcade: a receding perspective grid floor, a slatted
   neon sun, CRT scanlines, glassy panels, and a flickering neon-tube title
   (Monoton) over Chakra Petch.
+- **🥂 Gilded Deco** — a 1920s speakeasy: black, gold and jade with a slowly
+  turning geometric sunburst, a gilded title (Poiret One), thin gold-framed
+  panels, and onyx dice with gold pips.
+- **🚬 Smoking Gun** — film noir: near-monochrome with venetian-blind shadows,
+  shifting film grain, a single blood-red accent, and condensed Oswald over a
+  Courier Prime typewriter face. Stark white dice.
+- **👾 Press Start** — 8-bit arcade: an NES palette under CRT scanlines, blocky
+  hard-shadowed panels, a pixel title (Press Start 2P) over VT323, and
+  square-edged pixel dice.
 
 Dice tumble in when a round is dealt, and confetti rains down for the winner.
 Everything is pure CSS/canvas (no images), and motion respects
