@@ -19,11 +19,15 @@
 //
 // Shared env: TTS_MAX_QUANTITY (40), TTS_FORCE (1 to re-render), TTS_DELAY (ms).
 // Quantities above TTS_MAX_QUANTITY fall back to the browser voice.
+//
+// Audition first: TTS_DRY_RUN=1 renders only a few sample phrases (and always
+// re-renders them) so you can listen before committing to the whole set, e.g.
+//   TTS_PROVIDER=gemini GEMINI_API_KEY=xxxx TTS_DRY_RUN=1 npm run gen-tts
 
 import { mkdir, writeFile, access, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { vocabulary } from '../public/tts-keys.js';
+import { vocabulary, bidKey, bidText, callKey, CALLS } from '../public/tts-keys.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, '..', 'public', 'tts');
@@ -33,6 +37,17 @@ const MAX_QUANTITY = Number(process.env.TTS_MAX_QUANTITY || 40);
 const FORCE = process.env.TTS_FORCE === '1';
 const EXT = PROVIDER === 'gemini' ? 'wav' : 'mp3';
 const DELAY = Number(process.env.TTS_DELAY || (PROVIDER === 'gemini' ? 150 : 40));
+
+// Audition mode: render just a few representative phrases (singular + plural
+// bids and both calls) so you can listen before generating the whole set.
+const DRY_RUN = process.env.TTS_DRY_RUN === '1';
+const SAMPLE_ITEMS = [
+  { key: bidKey(1, 6), text: bidText(1, 6) }, // "1 six"  (singular)
+  { key: bidKey(3, 4), text: bidText(3, 4) }, // "3 fours" (plural)
+  { key: bidKey(5, 2), text: bidText(5, 2) }, // "5 twos"
+  { key: callKey('liar'), text: CALLS.liar },
+  { key: callKey('spot-on'), text: CALLS['spot-on'] },
+];
 
 // --- Cloud TTS (MP3) -------------------------------------------------------
 const CLOUD_KEY = process.env.GOOGLE_TTS_API_KEY;
@@ -122,15 +137,19 @@ const exists = (p) => access(p).then(() => true, () => false);
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
-  const items = vocabulary(MAX_QUANTITY);
+  const items = DRY_RUN ? SAMPLE_ITEMS : vocabulary(MAX_QUANTITY);
+  const force = FORCE || DRY_RUN; // always re-render audition samples
   const voiceLabel = PROVIDER === 'gemini' ? `${GEMINI_MODEL}/${GEMINI_VOICE}` : CLOUD_VOICE;
-  console.log(`Generating ${items.length} ${EXT} clips via ${PROVIDER} (${voiceLabel}) …`);
+  console.log(
+    `${DRY_RUN ? 'Dry run — auditioning' : 'Generating'} ${items.length} ${EXT} ` +
+      `clips via ${PROVIDER} (${voiceLabel}) …`
+  );
 
   let made = 0;
   let skipped = 0;
   for (const { key, text } of items) {
     const file = path.join(OUT_DIR, `${key}.${EXT}`);
-    if (!FORCE && (await exists(file))) {
+    if (!force && (await exists(file))) {
       skipped++;
       continue;
     }
@@ -155,6 +174,15 @@ async function main() {
   );
 
   console.log(`Done. ${made} generated, ${skipped} already present, ${present.length} total.`);
+
+  if (DRY_RUN) {
+    console.log('\nAudition these clips:');
+    for (const { key } of SAMPLE_ITEMS) console.log(`  public/tts/${key}.${EXT}`);
+    console.log(
+      '\nTweak GEMINI_VOICE / GEMINI_STYLE and re-run to compare, then run\n' +
+        'without TTS_DRY_RUN to render the full set.'
+    );
+  }
 }
 
 // Only run when invoked directly, so helpers (pcmToWav) stay importable/testable.

@@ -78,6 +78,15 @@ TTS_PROVIDER=gemini GEMINI_API_KEY=xxxx \
 # announcer — hyped, natural pace, neutral accent). Override to taste.
 ```
 
+**Audition first** — render just a few sample phrases (it always re-renders
+them) to check the voice/style before generating everything:
+
+```bash
+TTS_PROVIDER=gemini GEMINI_API_KEY=xxxx TTS_DRY_RUN=1 npm run gen-tts
+# Listen to the printed public/tts/*.wav, tweak GEMINI_VOICE / GEMINI_STYLE,
+# re-run to compare, then run again without TTS_DRY_RUN for the full set.
+```
+
 The manifest records the format (`mp3`/`wav`) so the client loads the right
 files automatically. See `scripts/gen-tts.mjs` for all options.
 
