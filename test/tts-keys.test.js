@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { bidText, bidKey, callKey, CALLS, vocabulary } from '../public/tts-keys.js';
 
-test('bid text pluralizes the face by quantity', () => {
-  assert.equal(bidText(1, 6), '1 six');
-  assert.equal(bidText(4, 4), '4 fours');
-  assert.equal(bidText(2, 1), '2 ones');
+test('bid text uses number words, pluralizes the face, and ends punchy', () => {
+  assert.equal(bidText(1, 6), 'one six!');
+  assert.equal(bidText(4, 4), 'four fours!');
+  assert.equal(bidText(2, 1), 'two ones!');
 });
 
 test('keys are stable and filesystem-safe', () => {
