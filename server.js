@@ -8,9 +8,16 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { Server } from 'socket.io';
 import { RoomManager, MAX_PLAYERS } from './src/rooms.js';
+import { decideMove } from './src/bot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
+
+// How long a bot "thinks" before acting, and how long a reveal lingers before
+// auto-advancing when bots are in the room.
+const BOT_MOVE_MIN = 800;
+const BOT_MOVE_MAX = 2200;
+const REVEAL_ADVANCE_MS = 4500;
 
 export function createServer() {
 const app = express();
@@ -39,6 +46,58 @@ function sanitizeName(name) {
     .replace(/[<>]/g, '');
 }
 
+const isBotSeat = (room, id) => !!room.members.get(id)?.isBot;
+const roomHasBots = (room) => [...room.members.values()].some((m) => m.isBot);
+
+// Drive the game forward for bots: take a bot's turn after a brief delay, and
+// auto-advance the reveal when bots are present. Re-arms itself after each step.
+function driveBots(room) {
+  if (room.botTimer) {
+    clearTimeout(room.botTimer);
+    room.botTimer = null;
+  }
+  const g = room.game;
+  if (!g) return;
+
+  if (g.phase === 'playing' && isBotSeat(room, g.turnId)) {
+    const botId = g.turnId;
+    const delay = BOT_MOVE_MIN + Math.random() * (BOT_MOVE_MAX - BOT_MOVE_MIN);
+    room.botTimer = setTimeout(() => {
+      room.botTimer = null;
+      // Re-check: the situation may have moved on while we waited.
+      if (!room.game || room.game.phase !== 'playing' || room.game.turnId !== botId) return;
+      try {
+        const move = decideMove(room.game, botId);
+        if (move.type === 'challenge') room.game.challenge(botId);
+        else if (move.type === 'spotOn') room.game.spotOn(botId);
+        else room.game.bid(botId, move.quantity, move.face);
+      } catch {
+        // Shouldn't happen, but never let a bot wedge the game.
+        try {
+          if (room.game.currentBid) room.game.challenge(botId);
+        } catch {
+          /* ignore */
+        }
+      }
+      broadcastRoom(room);
+      driveBots(room);
+    }, delay);
+  } else if (g.phase === 'reveal' && roomHasBots(room)) {
+    room.botTimer = setTimeout(() => {
+      room.botTimer = null;
+      if (room.game && room.game.phase === 'reveal') {
+        try {
+          room.game.nextRound();
+        } catch {
+          /* ignore */
+        }
+        broadcastRoom(room);
+        driveBots(room);
+      }
+    }, REVEAL_ADVANCE_MS);
+  }
+}
+
 function handleLeave(socket) {
   const info = socketInfo.get(socket.id);
   socketInfo.delete(socket.id);
@@ -60,6 +119,7 @@ function handleLeave(socket) {
   }
 
   if (room.isEmpty()) {
+    if (room.botTimer) clearTimeout(room.botTimer);
     rooms.deleteRoom(room.code);
   } else {
     broadcastRoom(room);
@@ -116,6 +176,7 @@ io.on('connection', (socket) => {
     try {
       fn(s.room, s.id);
       broadcastRoom(s.room);
+      driveBots(s.room);
     } catch (err) {
       reply('errorMsg', err.message);
     }
@@ -131,6 +192,26 @@ io.on('connection', (socket) => {
     broadcastRoom(s.room);
   });
 
+  // Host adds/removes computer players (lobby only, up to the room cap).
+  socket.on('addBot', () => {
+    const s = seat();
+    if (!s) return;
+    if (s.room.hostId !== s.id) return reply('errorMsg', 'Only the host can add bots.');
+    if (s.room.game) return reply('errorMsg', 'Add bots before starting.');
+    if (s.room.size >= MAX_PLAYERS) return reply('errorMsg', 'The room is full.');
+    s.room.addBot();
+    broadcastRoom(s.room);
+  });
+
+  socket.on('removeBot', () => {
+    const s = seat();
+    if (!s) return;
+    if (s.room.hostId !== s.id) return reply('errorMsg', 'Only the host can remove bots.');
+    if (s.room.game) return;
+    s.room.removeLastBot();
+    broadcastRoom(s.room);
+  });
+
   socket.on('start', () => {
     const s = seat();
     if (!s) return;
@@ -140,6 +221,7 @@ io.on('connection', (socket) => {
     try {
       s.room.startGame();
       broadcastRoom(s.room);
+      driveBots(s.room);
     } catch (err) {
       reply('errorMsg', err.message);
     }
@@ -159,6 +241,7 @@ io.on('connection', (socket) => {
       if (s.room.game.phase === 'reveal') {
         s.room.game.nextRound();
         broadcastRoom(s.room);
+        driveBots(s.room);
       }
     } catch (err) {
       reply('errorMsg', err.message);
@@ -173,6 +256,7 @@ io.on('connection', (socket) => {
     if (s.room.size < 2) return reply('errorMsg', 'Need at least 2 players.');
     s.room.startGame();
     broadcastRoom(s.room);
+    driveBots(s.room);
   });
 
   socket.on('leave', () => handleLeave(socket));

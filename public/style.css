@@ -364,6 +364,9 @@ button.small { padding: 8px 12px; font-size: .85rem; }
 .badge { font-size: .7rem; padding: 2px 8px; border-radius: 999px; background: var(--accent-2); color: var(--badge-text); }
 .badge.you { background: var(--good); color: var(--ink-good); }
 .badge.off { background: var(--chip-muted); }
+.badge.bot { background: var(--accent-2); color: var(--badge-text); }
+
+.bot-controls { display: flex; gap: 10px; justify-content: center; margin: 4px 0 8px; }
 
 /* Lobby settings */
 .settings { gap: 14px; }

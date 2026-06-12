@@ -15,9 +15,23 @@ import {
   listRulesets,
 } from './game.js';
 
-export const MAX_PLAYERS = 11; // host + up to 10 friends
+export const MAX_PLAYERS = 11; // host + up to 10 others (humans and/or bots)
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no easily-confused chars
+
+// Names handed to bots, in order, skipping any already taken in the room.
+const BOT_NAMES = [
+  'Botworth',
+  'Sir Bluffsalot',
+  'Dicey McBotface',
+  'The Calculator',
+  'Cogsworth',
+  'Rusty',
+  'Marvin',
+  'Clatter',
+  'Tincup',
+  'Ada',
+];
 
 export class RoomManager {
   constructor() {
@@ -59,6 +73,7 @@ export class Room {
     this.members = new Map();
     this.hostId = null;
     this.game = null;
+    this.botTimer = null; // pending scheduled bot move / reveal advance (server-side)
     // Host-configurable room options, applied when a game is started.
     this.settings = {
       startingDice: STARTING_DICE,
@@ -85,17 +100,43 @@ export class Room {
     return this.members.size;
   }
 
+  // Empty once no *human* is connected — bots alone don't keep a room alive.
   isEmpty() {
-    return [...this.members.values()].every((m) => !m.connected);
+    return ![...this.members.values()].some((m) => !m.isBot && m.connected);
   }
 
   addMember(token, name, socketId) {
     const id = randomUUID(); // public seat id
     const isHost = this.members.size === 0;
-    const member = { id, token: token || null, name, connected: true, isHost, socketId };
+    const member = { id, token: token || null, name, connected: true, isHost, isBot: false, socketId };
     this.members.set(id, member);
     if (isHost) this.hostId = id;
     return member;
+  }
+
+  /** Add a computer player (a member with no socket). */
+  addBot() {
+    const taken = new Set([...this.members.values()].map((m) => m.name));
+    const name = BOT_NAMES.find((n) => !taken.has(n)) || `Bot ${this.members.size}`;
+    const member = {
+      id: randomUUID(),
+      token: null,
+      name,
+      connected: true,
+      isHost: false,
+      isBot: true,
+      socketId: null,
+    };
+    this.members.set(member.id, member);
+    return member;
+  }
+
+  /** Remove the most recently added bot (used by the host's "remove bot"). */
+  removeLastBot() {
+    const bots = [...this.members.values()].filter((m) => m.isBot);
+    const last = bots[bots.length - 1];
+    if (last) this.members.delete(last.id);
+    return last || null;
   }
 
   /** Find a member by its private reclaim token (null tokens never match). */
@@ -118,7 +159,7 @@ export class Room {
   removeMember(id) {
     this.members.delete(id);
     if (id === this.hostId) {
-      const next = [...this.members.values()].find((m) => m.connected);
+      const next = [...this.members.values()].find((m) => m.connected && !m.isBot);
       this.hostId = next ? next.id : null;
       if (next) next.isHost = true;
     }
@@ -142,6 +183,7 @@ export class Room {
         name: m.name,
         connected: m.connected,
         isHost: m.id === this.hostId,
+        isBot: !!m.isBot,
         isYou: m.id === viewerId,
       })),
       game: this.game ? this.game.toView(viewerId) : null,

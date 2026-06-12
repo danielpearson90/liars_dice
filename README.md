@@ -37,6 +37,9 @@ The host picks one of these in the lobby; it's applied when the game starts:
 
 ### Lobby options (set by the host)
 
+- **Bots** — add 🤖 computer players to fill out the table (up to the 11-player
+  cap), so you can play solo or with odd numbers. They take their turns
+  automatically and play a reasonable bluff-and-challenge game.
 - **Starting dice per player** — anywhere from 1 to 20.
 - **Show bid probabilities** — when on, the central bid placard shows the odds
   the bid is true, e.g. `23% chance · 20 dice`. It's the *global* chance (every

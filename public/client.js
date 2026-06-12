@@ -4,6 +4,7 @@ import { bidKey, callKey } from './tts-keys.js';
 
 const socket = io();
 const MAX_STARTING_DICE = 20;
+const MAX_PLAYERS = 11; // mirrors the server cap (for disabling the Add bot button)
 
 // --- sound effects ---------------------------------------------------------
 // All effects are synthesized with the Web Audio API, so there are no audio
@@ -509,6 +510,8 @@ $('probToggle').onchange = (e) =>
   socket.emit('updateSettings', { showProbability: e.target.checked });
 $('rulesetSelect').onchange = (e) =>
   socket.emit('updateSettings', { ruleset: e.target.value });
+$('addBotBtn').onclick = () => socket.emit('addBot');
+$('removeBotBtn').onclick = () => socket.emit('removeBot');
 $('copyCode').onclick = () => {
   const url = `${location.origin}/?room=${lastState.code}`;
   navigator.clipboard?.writeText(url).then(
@@ -641,14 +644,21 @@ function renderLobby(state) {
     const tags = document.createElement('span');
     tags.className = 'tags';
     if (m.isHost) tags.appendChild(badge('Host'));
+    if (m.isBot) tags.appendChild(badge('🤖 Bot', 'bot'));
     if (m.isYou) tags.appendChild(badge('You', 'you'));
     li.appendChild(tags);
     list.appendChild(li);
   }
   const amHost = state.hostId === me;
   const enough = state.members.length >= 2;
+  const botCount = state.members.filter((m) => m.isBot).length;
   $('startBtn').classList.toggle('hidden', !amHost);
   $('startBtn').disabled = !enough;
+
+  // Bot controls (host only).
+  $('botControls').classList.toggle('hidden', !amHost);
+  $('addBotBtn').disabled = state.members.length >= MAX_PLAYERS;
+  $('removeBotBtn').disabled = botCount === 0;
   $('lobbyHint').textContent = amHost
     ? enough
       ? 'Everyone in? Hit start.'
@@ -730,6 +740,7 @@ function renderPlayers(state) {
   box.innerHTML = '';
   // Seats whose player is currently disconnected (awaiting reconnect).
   const away = new Set((state.members || []).filter((m) => !m.connected).map((m) => m.id));
+  const bots = new Set((state.members || []).filter((m) => m.isBot).map((m) => m.id));
   for (const p of g.players) {
     const row = document.createElement('div');
     row.className = 'player';
@@ -746,6 +757,7 @@ function renderPlayers(state) {
     const tags = document.createElement('span');
     tags.className = 'tags';
     if (state.hostId === p.id) tags.appendChild(badge('Host'));
+    if (bots.has(p.id)) tags.appendChild(badge('🤖', 'bot'));
     if (p.eliminated) tags.appendChild(badge('Out', 'off'));
     if (isAway) tags.appendChild(badge('Away', 'away'));
     row.appendChild(tags);
