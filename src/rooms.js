@@ -125,6 +125,8 @@ export class Room {
       connected: true,
       isHost: false,
       isBot: true,
+      // Hidden per-bot competence: ~0.35–1, so bots vary but none are pushovers.
+      skill: 0.35 + Math.random() * 0.65,
       socketId: null,
     };
     this.members.set(member.id, member);

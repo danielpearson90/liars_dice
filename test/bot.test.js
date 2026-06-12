@@ -60,18 +60,30 @@ test('aces are treated as wild when the ruleset says so', () => {
   if (move.type === 'bid') assert.ok(g.outranks(move.quantity, move.face, g.currentBid));
 });
 
-test('every decision the bot makes is a legal engine move', () => {
-  // Fuzz a range of bids; whatever the bot returns must be accepted.
-  for (let q = 1; q <= 9; q++) {
-    for (let f = 1; f <= 6; f++) {
-      const g = situation({ myDice: [3, 3, 6, 2, 4], bid: { playerId: 'opp', quantity: q, face: f } });
-      g.turnId = 'bot'; // so the engine's turn guard passes when we apply it
-      const move = decideMove(g, 'bot', () => 0.5);
-      assert.doesNotThrow(() => {
-        if (move.type === 'challenge') g.challenge('bot');
-        else if (move.type === 'spotOn') g.spotOn('bot');
-        else g.bid('bot', move.quantity, move.face);
-      }, `illegal move for bid ${q}x${f}: ${JSON.stringify(move)}`);
+test('skill varies play: a sharp bot challenges a borderline bid a weak one lets stand', () => {
+  // Set up a bid whose truth probability (~0.40) sits between the weak and
+  // sharp challenge cutoffs, so only the skilled bot calls it.
+  const make = () =>
+    situation({ myDice: [3, 4], oppCount: 8, bid: { playerId: 'opp', quantity: 2, face: 6 } });
+  const r = () => 0.5; // no jitter / random branches
+
+  assert.equal(decideMove(make(), 'bot', r, 1.0).type, 'challenge'); // sharp
+  assert.equal(decideMove(make(), 'bot', r, 0.35).type, 'bid'); // weak — raises instead
+});
+
+test('every decision is a legal engine move across skill levels', () => {
+  for (const skill of [0.35, 0.7, 1.0]) {
+    for (let q = 1; q <= 9; q++) {
+      for (let f = 1; f <= 6; f++) {
+        const g = situation({ myDice: [3, 3, 6, 2, 4], bid: { playerId: 'opp', quantity: q, face: f } });
+        g.turnId = 'bot'; // so the engine's turn guard passes when we apply it
+        const move = decideMove(g, 'bot', () => 0.5, skill);
+        assert.doesNotThrow(() => {
+          if (move.type === 'challenge') g.challenge('bot');
+          else if (move.type === 'spotOn') g.spotOn('bot');
+          else g.bid('bot', move.quantity, move.face);
+        }, `illegal move (skill ${skill}) for bid ${q}x${f}: ${JSON.stringify(move)}`);
+      }
     }
   }
 });

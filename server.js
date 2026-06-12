@@ -67,7 +67,8 @@ function driveBots(room) {
       // Re-check: the situation may have moved on while we waited.
       if (!room.game || room.game.phase !== 'playing' || room.game.turnId !== botId) return;
       try {
-        const move = decideMove(room.game, botId);
+        const skill = room.members.get(botId)?.skill ?? 0.7;
+        const move = decideMove(room.game, botId, Math.random, skill);
         if (move.type === 'challenge') room.game.challenge(botId);
         else if (move.type === 'spotOn') room.game.spotOn(botId);
         else room.game.bid(botId, move.quantity, move.face);

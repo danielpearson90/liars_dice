@@ -21,9 +21,14 @@ function pFace(face, wilds) {
 
 /**
  * Decide a move for the bot at `botId`.
+ *
+ * `skill` (~0.35–1) is a hidden per-bot competence knob: higher skill sharpens
+ * lie-detection, tightens which raises it's willing to bluff, and reduces random
+ * play. Every bot stays at least competent (there's no "easy" floor below ~0.35).
+ *
  * @returns {{type:'bid', quantity:number, face:number} | {type:'challenge'} | {type:'spotOn'}}
  */
-export function decideMove(game, botId, rng = Math.random) {
+export function decideMove(game, botId, rng = Math.random, skill = 0.7) {
   const hand = game.getPlayer(botId).dice;
   const total = game.totalDiceInPlay();
   const unknown = total - hand.length;
@@ -58,17 +63,22 @@ export function decideMove(game, botId, rng = Math.random) {
   // How believable is the standing bid?
   const pTrue = belief(bid.quantity, bid.face);
 
-  // Call "liar" when it looks unlikely (with a little jitter so it's not robotic).
-  const challengeAt = 0.3 + (rng() - 0.5) * 0.1; // ~0.25–0.35
+  // Call "liar" when it looks unlikely. Sharper bots use a higher cutoff (catch
+  // more lies) with less random jitter; weaker bots let more bids stand.
+  const jitter = (rng() - 0.5) * (0.14 - 0.08 * skill);
+  const challengeAt = 0.28 + 0.16 * skill + jitter;
   if (pTrue < challengeAt) return { type: 'challenge' };
 
   // Occasionally call spot-on when the count looks exactly right.
-  if (Math.abs(expected(bid.face) - bid.quantity) < 0.5 && rng() < 0.15) {
+  if (Math.abs(expected(bid.face) - bid.quantity) < 0.5 && rng() < 0.08 + 0.12 * skill) {
     return { type: 'spotOn' };
   }
 
-  // Otherwise make a believable legal raise.
-  const raise = chooseRaise(bid, total, expected, belief, rng);
+  // Otherwise make a believable legal raise. Sharper bots bluff less loosely
+  // (higher belief floor) and pick more decisively (smaller candidate pool).
+  const believableFloor = 0.4 + 0.12 * skill;
+  const topN = skill > 0.7 ? 1 : skill > 0.5 ? 2 : 3;
+  const raise = chooseRaise(bid, total, expected, belief, rng, believableFloor, topN);
   if (raise) return { type: 'bid', ...raise };
 
   // Nothing worth raising to — call it.
@@ -76,7 +86,7 @@ export function decideMove(game, botId, rng = Math.random) {
 }
 
 /** Pick a legal raise the bot can reasonably stand behind (else null). */
-function chooseRaise(bid, total, expected, belief, rng) {
+function chooseRaise(bid, total, expected, belief, rng, believableFloor, topN) {
   const candidates = [];
   for (let f = 1; f <= 6; f++) {
     // Lowest legal quantity for this face: match on a higher face, else beat it.
@@ -92,9 +102,9 @@ function chooseRaise(bid, total, expected, belief, rng) {
   if (!candidates.length) return null;
 
   // Prefer raises the bot believes; fall back to the least-bad bluff.
-  const believable = candidates.filter((c) => c.belief >= 0.45);
+  const believable = candidates.filter((c) => c.belief >= believableFloor);
   const pool = (believable.length ? believable : candidates).sort((a, b) => b.belief - a.belief);
-  const top = pool.slice(0, Math.min(3, pool.length));
+  const top = pool.slice(0, Math.min(topN, pool.length));
   const pick = top[Math.floor(rng() * top.length)] || pool[0];
   return { quantity: pick.quantity, face: pick.face };
 }
