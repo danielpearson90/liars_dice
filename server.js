@@ -14,10 +14,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 
 // How long a bot "thinks" before acting, and how long a reveal lingers before
-// auto-advancing when bots are in the room.
-const BOT_MOVE_MIN = 800;
-const BOT_MOVE_MAX = 2200;
-const REVEAL_ADVANCE_MS = 4500;
+// auto-advancing when bots are in the room. The minimum is kept comfortably
+// longer than a spoken announcer clip (~3s) so back-to-back bot moves don't
+// talk over each other.
+const BOT_MOVE_MIN = 3200;
+const BOT_MOVE_MAX = 4800;
+const REVEAL_ADVANCE_MS = 6000;
 
 export function createServer() {
 const app = express();
