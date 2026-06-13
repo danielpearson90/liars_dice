@@ -34,6 +34,10 @@ The host picks one of these in the lobby; it's applied when the game starts:
   video-game version.
 - **Spot-on regains a die** — no wilds, but a correct Spot-on wins the **caller**
   a die back (up to the starting count) instead of others losing one.
+- **Reverse (lose to win)** — a misère variant: the **first player to lose all
+  their dice wins**. Whoever is *right* in a Liar call **sheds** a die (toward
+  winning); a correct Spot-on **gives every other player** a die (a wrong one
+  gives the caller one). Gains are capped at the starting count.
 
 ### Lobby options (set by the host)
 

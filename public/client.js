@@ -945,17 +945,29 @@ function renderReveal(g) {
     `There ${r.actual === 1 ? 'was' : 'were'} <b>${r.actual}</b> ` +
     `${faceName(r.face)}${r.actual === 1 ? '' : 's'}${r.countsWild ? ' (1s wild)' : ''}. `;
 
+  const shedAll = g.ruleset && g.ruleset.goal === 'shed-all';
   if (r.kind === 'challenge') {
     const bidGood = r.actual >= r.quantity;
-    result.classList.add(bidGood ? 'bad' : 'good');
-    result.innerHTML =
-      `${caller} challenged <b>${bidStr}</b>.<br>` +
-      countLine +
-      (bidGood ? 'The bid held — challenger loses a die.' : 'It was a lie — bidder loses a die.');
+    let outcome;
+    if (shedAll) {
+      // The player who was right sheds a die (good — toward winning).
+      result.classList.add('good');
+      outcome = bidGood
+        ? 'The bid held — the bidder sheds a die!'
+        : 'It was a lie — the challenger sheds a die!';
+    } else {
+      result.classList.add(bidGood ? 'bad' : 'good');
+      outcome = bidGood ? 'The bid held — challenger loses a die.' : 'It was a lie — bidder loses a die.';
+    }
+    result.innerHTML = `${caller} challenged <b>${bidStr}</b>.<br>` + countLine + outcome;
   } else {
     result.classList.add(r.exact ? 'good' : 'bad');
     let outcome;
-    if (!r.exact) {
+    if (shedAll) {
+      outcome = r.exact
+        ? 'Exactly right — everyone else gains a die!'
+        : `Not exact — ${caller} ${callerYou ? 'gain' : 'gains'} a die.`;
+    } else if (!r.exact) {
       outcome = 'Not exact — caller loses a die.';
     } else if (r.gainerId) {
       outcome = r.gainerCapped

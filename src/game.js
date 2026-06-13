@@ -66,6 +66,14 @@ export const RULESETS = {
     wilds: false,
     spotOnReward: 'caller-regains',
   },
+  reverse: {
+    id: 'reverse',
+    name: 'Reverse (lose to win)',
+    desc: 'First to lose ALL their dice wins. Being right sheds a die; a correct Spot-on gives everyone else a die (a wrong one gives you one).',
+    wilds: false,
+    spotOnReward: 'others-lose', // unused under the shed-all goal
+    goal: 'shed-all',
+  },
 };
 
 export const DEFAULT_RULESET = 'common-hand';
@@ -226,7 +234,16 @@ export class Game {
     const { quantity, face, playerId: bidderId } = this.currentBid;
     const actual = this.countFace(face);
     const bidWasGood = actual >= quantity;
-    const loserId = bidWasGood ? playerId : bidderId;
+    // Normally the player who was WRONG loses a die. Under the shed-all goal,
+    // losing dice is the aim, so the player who was RIGHT sheds one instead.
+    const targetId =
+      this.ruleset.goal === 'shed-all'
+        ? bidWasGood
+          ? bidderId // bid held -> bidder was right -> bidder sheds
+          : playerId // it was a lie -> challenger was right -> challenger sheds
+        : bidWasGood
+          ? playerId // bid held -> challenger loses
+          : bidderId; // it was a lie -> bidder loses
     return this.resolveReveal({
       kind: 'challenge',
       callerId: playerId,
@@ -235,7 +252,7 @@ export class Game {
       face,
       actual,
       countsWild: this.wildsApply(face),
-      losers: [loserId],
+      losers: [targetId],
     });
   }
 
@@ -249,6 +266,7 @@ export class Game {
     const actual = this.countFace(face);
     const exact = actual === quantity;
 
+    const others = () => this.activePlayers().filter((p) => p.id !== playerId).map((p) => p.id);
     const reveal = {
       kind: 'spot-on',
       callerId: playerId,
@@ -259,17 +277,23 @@ export class Game {
       exact,
       countsWild: this.wildsApply(face),
       reward: this.ruleset.spotOnReward,
+      goal: this.ruleset.goal,
       losers: [],
     };
-    if (!exact) {
-      // A wrong call always costs the caller a die, regardless of ruleset.
+
+    if (this.ruleset.goal === 'shed-all') {
+      // Dice are a burden: a correct call dumps one on everyone else; a wrong
+      // call dumps one on the caller. (Gains are capped at the starting count.)
+      reveal.gainers = exact ? others() : [playerId];
+    } else if (!exact) {
+      // A wrong call always costs the caller a die.
       reveal.losers = [playerId];
     } else if (this.ruleset.spotOnReward === 'caller-regains') {
       // The caller wins a die back (capped at the starting count); nobody loses.
       reveal.gainerId = playerId;
     } else {
       // Default: every other active player loses a die.
-      reveal.losers = this.activePlayers().filter((p) => p.id !== playerId).map((p) => p.id);
+      reveal.losers = others();
     }
     return this.resolveReveal(reveal);
   }
@@ -277,6 +301,8 @@ export class Game {
   // --- reveal / scoring ----------------------------------------------------
 
   resolveReveal(reveal) {
+    const shedAll = this.ruleset.goal === 'shed-all';
+
     // Snapshot every active player's dice for the reveal display.
     reveal.dice = this.activePlayers().map((p) => ({
       id: p.id,
@@ -284,43 +310,57 @@ export class Game {
       dice: [...p.dice],
     }));
 
-    // Apply losses.
+    // Apply die losses. Reaching 0 normally eliminates a player; under the
+    // shed-all goal it instead WINS (handled below), so don't eliminate.
     for (const loserId of reveal.losers) {
       const loser = this.getPlayer(loserId);
       if (!loser || loser.eliminated) continue;
       loser.diceCount -= 1;
       if (loser.diceCount <= 0) {
         loser.diceCount = 0;
-        loser.eliminated = true;
+        if (!shedAll) loser.eliminated = true;
       }
     }
 
-    // Apply a die gain (Spot-on regains), capped at the starting count.
-    if (reveal.gainerId) {
-      const gainer = this.getPlayer(reveal.gainerId);
-      if (gainer && !gainer.eliminated && gainer.diceCount < this.startingDice) {
-        gainer.diceCount += 1;
-      } else {
-        reveal.gainerCapped = true; // already at max — no die changed hands
-      }
+    // Apply die gains (Spot-on regains, or the shed-all dump), capped at start.
+    const gainIds = [];
+    if (reveal.gainerId) gainIds.push(reveal.gainerId);
+    if (reveal.gainers) gainIds.push(...reveal.gainers);
+    for (const gid of gainIds) {
+      const gainer = this.getPlayer(gid);
+      if (!gainer || gainer.eliminated) continue;
+      if (gainer.diceCount < this.startingDice) gainer.diceCount += 1;
+      else if (gid === reveal.gainerId) reveal.gainerCapped = true;
     }
 
     this.lastReveal = reveal;
     this.phase = 'reveal';
 
-    const remaining = this.activePlayers();
-    if (remaining.length <= 1) {
-      this.phase = 'gameover';
-      this.winnerId = remaining.length === 1 ? remaining[0].id : null;
-      reveal.gameOver = true;
-      reveal.winnerId = this.winnerId;
+    if (shedAll) {
+      // First player down to zero dice wins (only a shed can reach 0, and at
+      // most one shed happens per resolution, so the winner is unambiguous).
+      const winner = this.players.find((p) => p.diceCount === 0);
+      if (winner) {
+        this.phase = 'gameover';
+        this.winnerId = winner.id;
+        reveal.gameOver = true;
+        reveal.winnerId = winner.id;
+        return { type: 'reveal', ...reveal };
+      }
     } else {
-      // The next round is started explicitly via `nextRound`, so the UI can
-      // show the reveal first. The opener advances exactly one seat each round:
-      // the next active player after whoever opened the round that just ended
-      // (independent of who called or who lost a die).
-      reveal.nextStarterId = this.nextActiveId(this.roundStarterId);
+      const remaining = this.activePlayers();
+      if (remaining.length <= 1) {
+        this.phase = 'gameover';
+        this.winnerId = remaining.length === 1 ? remaining[0].id : null;
+        reveal.gameOver = true;
+        reveal.winnerId = this.winnerId;
+        return { type: 'reveal', ...reveal };
+      }
     }
+
+    // Otherwise the next round is started explicitly via `nextRound` (so the UI
+    // can show the reveal first); the opener advances exactly one seat.
+    reveal.nextStarterId = this.nextActiveId(this.roundStarterId);
     return { type: 'reveal', ...reveal };
   }
 
@@ -369,6 +409,7 @@ export class Game {
         name: this.ruleset.name,
         wilds: this.ruleset.wilds,
         spotOnReward: this.ruleset.spotOnReward,
+        goal: this.ruleset.goal || 'last-standing',
       },
       lastReveal: this.lastReveal,
       players: this.players.map((p) => ({

@@ -325,6 +325,68 @@ test('aces wild: a bid on aces is not helped by wilds', () => {
   assert.equal(ev.countsWild, false);
 });
 
+// --- reverse (lose-to-win) ruleset ----------------------------------------
+
+test('reverse: a correct Liar call sheds the challenger a die', () => {
+  const g = makeGame(2, [1], { ruleset: 'reverse' });
+  g.getPlayer('p0').dice = [2, 3, 4, 5, 6]; // no 1s
+  g.getPlayer('p1').dice = [2, 3, 4, 5, 6];
+  g.bid('p0', 3, 1); // claims three 1s — a lie (there are none)
+  const ev = g.challenge('p1'); // p1 is right -> p1 sheds
+  assert.deepEqual(ev.losers, ['p1']);
+  assert.equal(g.getPlayer('p1').diceCount, 4);
+  assert.equal(g.getPlayer('p0').diceCount, 5);
+});
+
+test('reverse: a bid that holds sheds the bidder a die', () => {
+  const g = makeGame(2, [1], { ruleset: 'reverse' });
+  g.getPlayer('p0').dice = [2, 2, 2, 4, 5]; // three 2s
+  g.getPlayer('p1').dice = [3, 3, 4, 5, 6];
+  g.bid('p0', 2, 2); // true (three 2s ≥ 2)
+  const ev = g.challenge('p1'); // bid held -> p0 was right -> p0 sheds
+  assert.deepEqual(ev.losers, ['p0']);
+  assert.equal(g.getPlayer('p0').diceCount, 4);
+});
+
+test('reverse: first to zero dice wins (not eliminated)', () => {
+  const g = makeGame(2, [1], { ruleset: 'reverse' });
+  g.getPlayer('p0').dice = [2]; // p0 on its last die...
+  g.getPlayer('p0').diceCount = 1;
+  g.getPlayer('p1').dice = [2, 2, 2, 2, 2];
+  g.bid('p0', 1, 2); // true -> holds -> p0 (bidder) sheds its last die
+  const ev = g.challenge('p1');
+  assert.equal(ev.gameOver, true);
+  assert.equal(ev.winnerId, 'p0');
+  assert.equal(g.phase, 'gameover');
+  assert.equal(g.getPlayer('p0').diceCount, 0);
+  assert.equal(g.getPlayer('p0').eliminated, false); // they won, not out
+});
+
+test('reverse: a correct spot-on gives everyone else a die (capped at start)', () => {
+  const g = makeGame(2, [1], { ruleset: 'reverse' });
+  g.getPlayer('p0').dice = [5, 5, 2, 3]; // two 5s
+  g.getPlayer('p0').diceCount = 4; // room to be pushed back up
+  g.getPlayer('p1').dice = [3, 3, 3, 3, 3];
+  g.bid('p0', 2, 5); // exactly two 5s
+  const ev = g.spotOn('p1');
+  assert.equal(ev.exact, true);
+  assert.deepEqual(ev.gainers, ['p0']);
+  assert.equal(g.getPlayer('p0').diceCount, 5); // pushed back toward the start
+  assert.equal(g.getPlayer('p1').diceCount, 5); // caller unaffected
+});
+
+test('reverse: a wrong spot-on gives the caller a die', () => {
+  const g = makeGame(2, [1], { ruleset: 'reverse' });
+  g.getPlayer('p0').dice = [5, 5, 2, 3];
+  g.getPlayer('p1').dice = [3, 3, 3, 3]; // diceCount 4
+  g.getPlayer('p1').diceCount = 4;
+  g.bid('p0', 3, 5); // claims three 5s; only two exist
+  const ev = g.spotOn('p1');
+  assert.equal(ev.exact, false);
+  assert.deepEqual(ev.gainers, ['p1']);
+  assert.equal(g.getPlayer('p1').diceCount, 5);
+});
+
 test('toView exposes the active ruleset', () => {
   const g = makeGame(2, [1], { ruleset: 'aces-wild' });
   const view = g.toView('p0');
