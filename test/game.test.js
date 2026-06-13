@@ -291,6 +291,40 @@ test('spot-on regains: a wrong call still costs the caller a die', () => {
   assert.equal(g.getPlayer('p1').diceCount, 4);
 });
 
+test('aces wild: spot-on counts 1s as wild', () => {
+  // Two literal 5s + three 1s = exactly five 5s when aces are wild.
+  const g = makeGame(2, [1], { ruleset: 'aces-wild' });
+  g.getPlayer('p0').dice = [5, 5, 1, 2, 3];
+  g.getPlayer('p1').dice = [1, 1, 4, 6, 2];
+  g.bid('p0', 5, 5);
+  const ev = g.spotOn('p1');
+  assert.equal(ev.actual, 5);
+  assert.equal(ev.exact, true);
+  assert.equal(ev.countsWild, true);
+});
+
+test('aces wild: spot-on can be exact on wild 1s alone', () => {
+  const g = makeGame(2, [1], { ruleset: 'aces-wild' });
+  g.getPlayer('p0').dice = [1, 1, 2, 3, 4]; // no literal 5s, two wild 1s...
+  g.getPlayer('p1').dice = [1, 6, 6, 6, 6]; // ...plus one more wild 1 = three
+  g.bid('p0', 3, 5);
+  const ev = g.spotOn('p1');
+  assert.equal(ev.actual, 3);
+  assert.equal(ev.exact, true);
+});
+
+test('aces wild: a bid on aces is not helped by wilds', () => {
+  // Bidding face 1 counts only literal 1s — aces are never wild for themselves.
+  const g = makeGame(2, [1], { ruleset: 'aces-wild' });
+  g.getPlayer('p0').dice = [1, 1, 5, 5, 5];
+  g.getPlayer('p1').dice = [1, 2, 3, 4, 6];
+  g.bid('p0', 3, 1);
+  const ev = g.spotOn('p1');
+  assert.equal(ev.actual, 3); // three literal 1s, not more
+  assert.equal(ev.exact, true);
+  assert.equal(ev.countsWild, false);
+});
+
 test('toView exposes the active ruleset', () => {
   const g = makeGame(2, [1], { ruleset: 'aces-wild' });
   const view = g.toView('p0');
