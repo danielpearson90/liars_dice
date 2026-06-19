@@ -478,7 +478,6 @@ button.small { padding: 8px 12px; font-size: .85rem; }
 .die .p1 { grid-area: a; } .die .p2 { grid-area: c; } .die .p3 { grid-area: d; }
 .die .p4 { grid-area: f; } .die .p5 { grid-area: g; } .die .p6 { grid-area: i; }
 .die .pc { grid-area: e; }
-.die.hl .pip { background: var(--accent-2); }
 body.theme-neon .die .pip { box-shadow: 0 0 6px var(--die-pip); }
 
 /* Roll-in animation when a fresh round is dealt. */
@@ -529,8 +528,28 @@ body.theme-neon .die .pip { box-shadow: 0 0 6px var(--die-pip); }
 .reveal .result { text-align: center; font-size: 1.1rem; margin-bottom: 14px; }
 .reveal .result.good { color: var(--good); }
 .reveal .result.bad { color: var(--danger); }
-.reveal-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+.reveal-row { display: flex; align-items: center; gap: 14px; margin: 10px 0; flex-wrap: wrap; }
 .reveal-row .pname { min-width: 80px; font-weight: 600; }
+
+/* Make the dice that count toward the bid pop, and fade the rest, so the called
+   number reads at a glance: a glowing ring + slight lift on each counted die. */
+.reveal-row .die { transition: opacity .2s ease, filter .2s ease; }
+.reveal-row .die:not(.hl) { opacity: .32; filter: grayscale(.35); }
+.reveal-row .die.hl {
+  position: relative; z-index: 1;
+  outline: 3px solid var(--accent); outline-offset: 2px;
+  filter: drop-shadow(0 0 8px var(--accent));
+  transform: scale(1.08);
+  animation: calledPop .4s cubic-bezier(.2, .8, .3, 1.4) both;
+}
+@keyframes calledPop {
+  0% { transform: scale(.55); opacity: 0; }
+  60% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-row .die.hl { animation: none; }
+}
 .reveal-actions { text-align: center; }
 .reveal-actions button { min-width: 200px; }
 
