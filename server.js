@@ -13,13 +13,14 @@ import { decideMove } from './src/bot.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 
-// How long a bot "thinks" before acting, and how long a reveal lingers before
-// auto-advancing when bots are in the room. The minimum is kept comfortably
-// longer than a spoken announcer clip (~3s) so back-to-back bot moves don't
-// talk over each other.
+// How long a bot "thinks" before acting. The minimum is kept comfortably longer
+// than a spoken announcer clip (~3s) so back-to-back bot moves don't talk over
+// each other.
 const BOT_MOVE_MIN = 3200;
 const BOT_MOVE_MAX = 4800;
-const REVEAL_ADVANCE_MS = 6000;
+// A reveal auto-advances after this long even if not everyone has readied up (an
+// AFK backstop); readying up early advances sooner. Env-overridable for tests.
+const revealTimeoutMs = () => Number(process.env.REVEAL_TIMEOUT_MS) || 5000;
 
 export function createServer() {
 const app = express();
@@ -142,9 +143,11 @@ function driveBots(room) {
       broadcastRoom(room);
       driveBots(room);
     }, delay);
-  } else if (g.phase === 'reveal' && requiredReadyIds(room).length === 0) {
-    // No human needs to ready (e.g. an all-bot table or only spectators) — give
-    // a beat to read the reveal, then move on automatically.
+    room.botTimer.unref?.(); // don't keep the process alive (tests)
+  } else if (g.phase === 'reveal') {
+    // Auto-advance after the timeout even if not everyone has readied — a
+    // backstop so an AFK player can't stall the table. (Everyone readying up
+    // advances sooner, via maybeAdvanceReveal.)
     room.botTimer = setTimeout(() => {
       room.botTimer = null;
       if (room.game && room.game.phase === 'reveal') {
@@ -156,7 +159,8 @@ function driveBots(room) {
         broadcastRoom(room);
         driveBots(room);
       }
-    }, REVEAL_ADVANCE_MS);
+    }, revealTimeoutMs());
+    room.botTimer.unref?.(); // don't keep the process alive (tests)
   }
 }
 

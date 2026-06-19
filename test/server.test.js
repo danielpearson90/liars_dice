@@ -193,3 +193,40 @@ test('reveal advances only once every human is ready', async () => {
     await srv.close();
   }
 });
+
+test('reveal auto-advances after the timeout even if nobody readies', async () => {
+  const prev = process.env.REVEAL_TIMEOUT_MS;
+  process.env.REVEAL_TIMEOUT_MS = '250'; // read at schedule time
+  const srv = await launch();
+  const host = connect(srv.url);
+  const guest = connect(srv.url);
+  try {
+    host.emit('create', { name: 'Alice' });
+    const [{ code, you: hostId }] = await once(host, 'joined');
+    const joined = waitState(host, (s) => s.members.length === 2);
+    guest.emit('join', { code, name: 'Bob' });
+    await once(guest, 'joined');
+    await joined;
+
+    const started = waitState(host, (s) => s.game && s.game.phase === 'playing');
+    host.emit('start');
+    const s0 = await started;
+    const first = s0.game.turnId === hostId ? host : guest;
+    const second = s0.game.turnId === hostId ? guest : host;
+    const afterBid = waitState(second, (s) => s.game.currentBid !== null);
+    first.emit('bid', { quantity: 1, face: 2 });
+    await afterBid;
+    const revealed = waitState(host, (s) => s.game.phase === 'reveal');
+    second.emit('challenge');
+    const round = (await revealed).game.roundNumber;
+
+    // Nobody readies — the timeout alone advances the round.
+    await waitState(host, (s) => s.game.phase === 'playing' && s.game.roundNumber === round + 1);
+  } finally {
+    host.close();
+    guest.close();
+    await srv.close();
+    if (prev === undefined) delete process.env.REVEAL_TIMEOUT_MS;
+    else process.env.REVEAL_TIMEOUT_MS = prev;
+  }
+});

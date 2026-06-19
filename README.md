@@ -23,8 +23,9 @@ laptop — no installs, no accounts.
 - Lose your last die and you're out. **Last player standing wins.**
 - The player who **opens** the bidding rotates one seat each round.
 - After each reveal, the next round starts once **every player hits Ready**
-  (with an "X / Y ready" indicator). Bots are auto-ready, and a table of only
-  bots/spectators advances on its own after a few seconds.
+  (with an "X / Y ready" indicator and a countdown). Bots are auto-ready, and a
+  **5-second timer auto-advances** the reveal regardless, so an away player can't
+  stall the table.
 
 ### Rulesets (chosen by the host)
 
