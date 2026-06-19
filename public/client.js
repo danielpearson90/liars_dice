@@ -503,9 +503,7 @@ let lastState = null; // most recent room view
 const bid = { quantity: null, face: null };
 let activeTurnKey = null; // identifies the turn the current selection belongs to
 let sortDice = localStorage.getItem('ld_sortdice') === '1'; // show own dice sorted
-const REVEAL_COUNTDOWN = 5; // seconds shown before a reveal auto-advances
-let revealSecsLeft = 0;
-let revealCountdownTimer = null;
+const REVEAL_COUNTDOWN = 5; // seconds the reveal progress bar drains over
 
 // Sort-your-dice toggle (display only — never sent to the server).
 const sortDiceBtn = document.getElementById('sortDiceBtn');
@@ -676,7 +674,7 @@ function leave() {
   me = null;
   lastState = null;
   forgetRoom();
-  stopRevealCountdown();
+  stopRevealBar();
   showChatButton(false);
   history.replaceState(null, '', location.pathname);
   show('home');
@@ -724,12 +722,12 @@ socket.on('state', (state) => {
   const prev = lastState;
   lastState = state;
   detectSounds(prev, state);
-  // Run a local reveal countdown that mirrors the server's auto-advance.
+  render(state); // shows/hides revealActions first…
+  // …then (re)start the draining bar when a fresh reveal appears.
   const wasReveal = prev && prev.game && prev.game.phase === 'reveal';
   const isReveal = state.game && state.game.phase === 'reveal';
-  if (isReveal && !wasReveal) startRevealCountdown();
-  else if (!isReveal && wasReveal) stopRevealCountdown();
-  render(state);
+  if (isReveal && !wasReveal) startRevealBar();
+  else if (!isReveal && wasReveal) stopRevealBar();
 });
 
 // --- rendering -------------------------------------------------------------
@@ -1039,23 +1037,19 @@ function renderControls(g) {
   $('spotBtn').disabled = !hasBid;
 }
 
-// A local countdown mirroring the server's reveal auto-advance, so players see
-// how long until the next round starts whether or not everyone has readied.
-function startRevealCountdown() {
-  stopRevealCountdown();
-  revealSecsLeft = REVEAL_COUNTDOWN;
-  revealCountdownTimer = setInterval(() => {
-    revealSecsLeft = Math.max(0, revealSecsLeft - 1);
-    if (lastState && lastState.game && lastState.game.phase === 'reveal') {
-      renderReadyControls(lastState);
-    }
-    if (revealSecsLeft <= 0) stopRevealCountdown();
-  }, 1000);
+// A draining progress bar mirroring the server's reveal auto-advance, so players
+// see how long until the next round whether or not everyone has readied. Pure
+// CSS animation, (re)started by restarting it on the (now-visible) fill element.
+function startRevealBar() {
+  const fill = $('revealProgressFill');
+  if (!fill) return;
+  fill.style.animation = 'none';
+  void fill.offsetWidth; // reflow so the animation restarts from full
+  fill.style.animation = `revealDrain ${REVEAL_COUNTDOWN}s linear forwards`;
 }
-function stopRevealCountdown() {
-  if (revealCountdownTimer) clearInterval(revealCountdownTimer);
-  revealCountdownTimer = null;
-  revealSecsLeft = 0;
+function stopRevealBar() {
+  const fill = $('revealProgressFill');
+  if (fill) fill.style.animation = 'none';
 }
 
 // The reveal's "everyone ready" gate: a Ready toggle + an "X / Y ready" status.
@@ -1077,9 +1071,9 @@ function renderReadyControls(state) {
   btn.classList.toggle('hidden', !meRequired);
   btn.classList.toggle('active', meReady);
   btn.textContent = meReady ? '✓ Ready — waiting…' : 'Ready';
-  let status = required.length ? `${readyCount} / ${required.length} ready` : 'Next round';
-  if (revealSecsLeft > 0) status += ` · ${revealSecsLeft}s`;
-  $('readyStatus').textContent = status;
+  $('readyStatus').textContent = required.length
+    ? `${readyCount} / ${required.length} ready`
+    : 'Next round…';
 }
 
 function renderReveal(g) {

@@ -555,6 +555,20 @@ body.theme-neon .die .pip { box-shadow: 0 0 6px var(--die-pip); }
 .reveal-actions button.active { background: var(--good); color: var(--ink-good); }
 .ready-status { margin: 8px 0 0; color: var(--muted); font-size: .9rem; letter-spacing: .04em; }
 
+/* Draining countdown bar until the reveal auto-advances. */
+.reveal-progress {
+  width: 100%; max-width: 280px; height: 5px; margin: 0 auto 12px;
+  background: var(--border); border-radius: 999px; overflow: hidden;
+}
+.reveal-progress > span {
+  display: block; height: 100%; width: 100%; border-radius: 999px;
+  background: var(--accent); transform-origin: left center; transform: scaleX(1);
+}
+@keyframes revealDrain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .reveal-progress > span { animation: none !important; transform: scaleX(1); }
+}
+
 .game-over { text-align: center; }
 .game-over h2 { font-size: 1.7rem; }
 
