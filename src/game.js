@@ -117,6 +117,7 @@ export class Game {
     this.roundNumber = 0;
     this.lastReveal = null; // populated after a challenge / spot-on
     this.winnerId = null;
+    this.readyIds = new Set(); // players who've hit "ready" on the current reveal
     this.startRound(this.players[0].id);
   }
 
@@ -160,6 +161,7 @@ export class Game {
     }
     this.currentBid = null;
     this.phase = 'playing';
+    this.readyIds = new Set(); // ready votes belong to a reveal, not a round
     const starter = this.getPlayer(firstPlayerId);
     this.turnId =
       starter && !starter.eliminated ? firstPlayerId : this.nextActiveId(firstPlayerId);
@@ -335,6 +337,7 @@ export class Game {
 
     this.lastReveal = reveal;
     this.phase = 'reveal';
+    this.readyIds = new Set(); // fresh "ready" votes for this reveal
 
     if (shedAll) {
       // First player down to zero dice wins (only a shed can reach 0, and at
@@ -373,6 +376,13 @@ export class Game {
     return { type: 'round-start', roundNumber: this.roundNumber };
   }
 
+  /** Record (or clear) a player's "ready to continue" vote during a reveal. */
+  markReady(playerId, ready) {
+    if (this.phase !== 'reveal') return;
+    if (ready) this.readyIds.add(playerId);
+    else this.readyIds.delete(playerId);
+  }
+
   // --- guards --------------------------------------------------------------
 
   assertTurn(playerId) {
@@ -402,6 +412,7 @@ export class Game {
       roundNumber: this.roundNumber,
       currentBid: this.currentBid,
       turnId: this.turnId,
+      readyIds: [...this.readyIds],
       winnerId: this.winnerId,
       totalDice: this.totalDiceInPlay(),
       ruleset: {

@@ -148,3 +148,48 @@ test('chat: messages broadcast, sanitize, and replay as history on join', async 
     await srv.close();
   }
 });
+
+test('reveal advances only once every human is ready', async () => {
+  const srv = await launch();
+  const host = connect(srv.url);
+  const guest = connect(srv.url);
+  try {
+    host.emit('create', { name: 'Alice' });
+    const [{ code, you: hostId }] = await once(host, 'joined');
+    const joined = waitState(host, (s) => s.members.length === 2);
+    guest.emit('join', { code, name: 'Bob' });
+    await once(guest, 'joined');
+    await joined;
+
+    const started = waitState(host, (s) => s.game && s.game.phase === 'playing');
+    host.emit('start');
+    const s0 = await started;
+
+    // Drive to a reveal: whoever leads bids, the other challenges.
+    const first = s0.game.turnId === hostId ? host : guest;
+    const second = s0.game.turnId === hostId ? guest : host;
+    const afterBid = waitState(second, (s) => s.game.currentBid !== null);
+    first.emit('bid', { quantity: 1, face: 2 });
+    await afterBid;
+    const revealed = waitState(host, (s) => s.game.phase === 'reveal');
+    second.emit('challenge');
+    const round = (await revealed).game.roundNumber;
+
+    // One ready: still waiting (2 required), count reflects it.
+    const oneReady = waitState(host, (s) => (s.game.readyIds || []).length === 1);
+    host.emit('ready', { ready: true });
+    assert.equal((await oneReady).game.phase, 'reveal');
+
+    // Second ready: the round advances.
+    const advanced = waitState(
+      host,
+      (s) => s.game.phase === 'playing' && s.game.roundNumber === round + 1
+    );
+    guest.emit('ready', { ready: true });
+    await advanced;
+  } finally {
+    host.close();
+    guest.close();
+    await srv.close();
+  }
+});

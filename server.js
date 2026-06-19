@@ -65,7 +65,39 @@ function sanitizeChat(text) {
 }
 
 const isBotSeat = (room, id) => !!room.members.get(id)?.isBot;
-const roomHasBots = (room) => [...room.members.values()].some((m) => m.isBot);
+
+// Seats that must hit "ready" before a reveal advances: connected humans who are
+// still in the game (bots are auto-ready; disconnected/eliminated don't block).
+function requiredReadyIds(room) {
+  const g = room.game;
+  const out = [];
+  for (const m of room.members.values()) {
+    if (m.isBot || !m.connected) continue;
+    const p = g.getPlayer(m.id);
+    if (p && p.eliminated) continue;
+    out.push(m.id);
+  }
+  return out;
+}
+
+// Advance out of a reveal once every required player is ready. Returns true if
+// it advanced. (When nobody needs to ready — e.g. an all-bot table — the timer
+// in driveBots handles it instead.)
+function maybeAdvanceReveal(room) {
+  const g = room.game;
+  if (!g || g.phase !== 'reveal') return false;
+  const required = requiredReadyIds(room);
+  if (required.length === 0) return false;
+  if (!required.every((id) => g.readyIds.has(id))) return false;
+  try {
+    g.nextRound();
+  } catch {
+    return false;
+  }
+  broadcastRoom(room);
+  driveBots(room);
+  return true;
+}
 
 // Drive the game forward for bots: take a bot's turn after a brief delay, and
 // auto-advance the reveal when bots are present. Re-arms itself after each step.
@@ -101,7 +133,9 @@ function driveBots(room) {
       broadcastRoom(room);
       driveBots(room);
     }, delay);
-  } else if (g.phase === 'reveal' && roomHasBots(room)) {
+  } else if (g.phase === 'reveal' && requiredReadyIds(room).length === 0) {
+    // No human needs to ready (e.g. an all-bot table or only spectators) — give
+    // a beat to read the reveal, then move on automatically.
     room.botTimer = setTimeout(() => {
       room.botTimer = null;
       if (room.game && room.game.phase === 'reveal') {
@@ -141,6 +175,9 @@ function handleLeave(socket) {
     if (room.botTimer) clearTimeout(room.botTimer);
     rooms.deleteRoom(room.code);
   } else {
+    // A departure may have removed the last player we were waiting on to ready.
+    if (room.game && room.game.phase === 'reveal' && maybeAdvanceReveal(room)) return;
+    if (room.game && room.game.phase === 'reveal') driveBots(room); // re-arm timer if needed
     broadcastRoom(room);
   }
 }
@@ -268,19 +305,13 @@ io.on('connection', (socket) => {
   socket.on('challenge', withGame((room, id) => room.game.challenge(id)));
   socket.on('spotOn', withGame((room, id) => room.game.spotOn(id)));
 
-  // Anyone may advance past the reveal screen once it is showing.
-  socket.on('nextRound', () => {
+  // Each player marks ready on the reveal; the round advances once everyone is.
+  socket.on('ready', ({ ready } = {}) => {
     const s = seat();
-    if (!s || !s.room.game) return;
-    try {
-      if (s.room.game.phase === 'reveal') {
-        s.room.game.nextRound();
-        broadcastRoom(s.room);
-        driveBots(s.room);
-      }
-    } catch (err) {
-      reply('errorMsg', err.message);
-    }
+    if (!s || !s.room.game || s.room.game.phase !== 'reveal') return;
+    s.room.game.markReady(s.id, ready !== false);
+    broadcastRoom(s.room);
+    maybeAdvanceReveal(s.room);
   });
 
   // Host can start a brand-new game with the same lobby after game over.

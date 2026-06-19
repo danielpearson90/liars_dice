@@ -189,6 +189,25 @@ test('view hides opponents dice during play, reveals at showdown', () => {
   assert.ok(Array.isArray(revealView.players[1].dice)); // visible at reveal
 });
 
+test('ready votes are tracked during the reveal and cleared each round', () => {
+  const g = gameWithDice(2, [2, 2, 3, 4, 5, 6, 1, 2, 3, 4]);
+  g.bid('p0', 4, 2); // a lie -> challengeable
+  g.challenge('p1'); // -> reveal
+  assert.equal(g.phase, 'reveal');
+
+  g.markReady('p0', true);
+  g.markReady('p1', true);
+  assert.deepEqual([...g.readyIds].sort(), ['p0', 'p1']);
+  assert.deepEqual([...g.toView('p0').readyIds].sort(), ['p0', 'p1']);
+  g.markReady('p1', false); // can un-ready
+  assert.deepEqual([...g.readyIds], ['p0']);
+
+  g.nextRound();
+  assert.equal(g.readyIds.size, 0); // cleared for the new round
+  g.markReady('p0', true); // ignored outside a reveal
+  assert.equal(g.readyIds.size, 0);
+});
+
 test('cannot challenge or call spot-on with no bid', () => {
   const g = gameWithDice(2, [1]);
   assert.throws(() => g.challenge('p0'), /no bid/i);

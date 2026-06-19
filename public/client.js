@@ -621,7 +621,12 @@ $('bidBtn').onclick = () => {
 };
 $('challengeBtn').onclick = () => socket.emit('challenge');
 $('spotBtn').onclick = () => socket.emit('spotOn');
-$('nextRoundBtn').onclick = () => socket.emit('nextRound');
+$('readyBtn').onclick = () => {
+  const g = lastState && lastState.game;
+  if (!g) return;
+  const amReady = (g.readyIds || []).includes(me);
+  socket.emit('ready', { ready: !amReady }); // toggle
+};
 $('rematchBtn').onclick = () => socket.emit('rematch');
 $('leaveGame').onclick = leave;
 
@@ -807,7 +812,7 @@ function renderGame(state) {
   $('controls').classList.toggle('hidden', !myTurn);
   if (myTurn) renderControls(g);
 
-  $('revealActions').classList.toggle('hidden', g.phase !== 'reveal');
+  renderReadyControls(state);
 
   const over = g.phase === 'gameover';
   $('gameOver').classList.toggle('hidden', !over);
@@ -827,6 +832,7 @@ function renderPlayers(state) {
   // Seats whose player is currently disconnected (awaiting reconnect).
   const away = new Set((state.members || []).filter((m) => !m.connected).map((m) => m.id));
   const bots = new Set((state.members || []).filter((m) => m.isBot).map((m) => m.id));
+  const ready = g.phase === 'reveal' ? new Set(g.readyIds || []) : null;
   for (const p of g.players) {
     const row = document.createElement('div');
     row.className = 'player';
@@ -846,6 +852,7 @@ function renderPlayers(state) {
     if (bots.has(p.id)) tags.appendChild(badge('🤖', 'bot'));
     if (p.eliminated) tags.appendChild(badge('Out', 'off'));
     if (isAway) tags.appendChild(badge('Away', 'away'));
+    if (ready && ready.has(p.id)) tags.appendChild(badge('✓ Ready', 'you'));
     row.appendChild(tags);
 
     // The player's current standing bid, shown next to their name and
@@ -1009,6 +1016,30 @@ function renderControls(g) {
   const hasBid = !!g.currentBid;
   $('challengeBtn').disabled = !hasBid;
   $('spotBtn').disabled = !hasBid;
+}
+
+// The reveal's "everyone ready" gate: a Ready toggle + an "X / Y ready" status.
+function renderReadyControls(state) {
+  const g = state.game;
+  const show = g.phase === 'reveal';
+  $('revealActions').classList.toggle('hidden', !show);
+  if (!show) return;
+  const ready = new Set(g.readyIds || []);
+  const playerById = new Map(g.players.map((p) => [p.id, p]));
+  // Connected humans still in the game must ready up (bots are auto-ready).
+  const required = (state.members || []).filter(
+    (m) => m.connected && !m.isBot && !(playerById.get(m.id) || {}).eliminated
+  );
+  const readyCount = required.filter((m) => ready.has(m.id)).length;
+  const meRequired = required.some((m) => m.id === me);
+  const meReady = ready.has(me);
+  const btn = $('readyBtn');
+  btn.classList.toggle('hidden', !meRequired);
+  btn.classList.toggle('active', meReady);
+  btn.textContent = meReady ? '✓ Ready — waiting…' : 'Ready';
+  $('readyStatus').textContent = required.length
+    ? `${readyCount} / ${required.length} ready`
+    : 'Starting next round…';
 }
 
 function renderReveal(g) {

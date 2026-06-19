@@ -552,6 +552,8 @@ body.theme-neon .die .pip { box-shadow: 0 0 6px var(--die-pip); }
 }
 .reveal-actions { text-align: center; }
 .reveal-actions button { min-width: 200px; }
+.reveal-actions button.active { background: var(--good); color: var(--ink-good); }
+.ready-status { margin: 8px 0 0; color: var(--muted); font-size: .9rem; letter-spacing: .04em; }
 
 .game-over { text-align: center; }
 .game-over h2 { font-size: 1.7rem; }
