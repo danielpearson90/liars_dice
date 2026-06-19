@@ -368,6 +368,48 @@ button.small { padding: 8px 12px; font-size: .85rem; }
 
 .bot-controls { display: flex; gap: 10px; justify-content: center; margin: 4px 0 8px; }
 
+/* ===========================================================================
+   Room chat
+   =========================================================================== */
+.chat-btn {
+  position: fixed; right: 14px; bottom: 14px; z-index: 45;
+  width: 50px; height: 50px; padding: 0; font-size: 1.4rem; border-radius: 50%;
+  background: var(--accent); color: var(--ink-accent); border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .4); cursor: pointer;
+}
+.chat-btn:hover { filter: brightness(1.08); }
+.chat-unread {
+  position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px;
+  display: grid; place-items: center; border-radius: 999px;
+  background: var(--danger); color: var(--ink-danger); font-size: .7rem; font-weight: 700;
+}
+
+.chat-panel {
+  position: fixed; right: 14px; bottom: 72px; z-index: 46;
+  width: 320px; max-width: calc(100vw - 28px); height: 60vh; max-height: 440px;
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .5); overflow: hidden;
+}
+.chat-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-family: var(--font-display); font-size: 1rem;
+}
+.chat-head button { background: none; border: 0; color: var(--muted); font-size: 1.3rem; padding: 0 4px; cursor: pointer; }
+.chat-log { flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+.chat-msg { font-size: .92rem; line-height: 1.35; word-break: break-word; }
+.chat-msg .chat-who { color: var(--accent); font-weight: 700; }
+.chat-msg.mine .chat-who { color: var(--good); }
+.chat-log:empty::before { content: "No messages yet — say hi 👋"; color: var(--muted); font-style: italic; }
+.chat-form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); }
+.chat-form input { flex: 1; font-size: 1rem; padding: 9px 10px; }
+.chat-form button { flex: 0 0 auto; }
+
+@media (max-width: 480px) {
+  .chat-panel { left: 8px; right: 8px; width: auto; max-width: none; bottom: 70px; height: 56vh; }
+}
+
 /* Lobby settings */
 .settings { gap: 14px; }
 .settings h3 { margin: 0; font-size: 1.05rem; text-align: left; }

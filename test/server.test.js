@@ -115,3 +115,36 @@ test('non-host cannot start the game', async () => {
     await srv.close();
   }
 });
+
+test('chat: messages broadcast, sanitize, and replay as history on join', async () => {
+  const srv = await launch();
+  const host = connect(srv.url);
+  const guest = connect(srv.url);
+  try {
+    host.emit('create', { name: 'Alice' });
+    const [{ code }] = await once(host, 'joined');
+    guest.emit('join', { code, name: 'Bob' });
+    await once(guest, 'joined');
+
+    // Host sends a message with an HTML tag; guest should receive it sanitized.
+    const recv = once(guest, 'chat');
+    host.emit('chat', { text: '  hello <b>world</b>  ' });
+    const [msg] = await recv;
+    assert.equal(msg.name, 'Alice');
+    assert.equal(msg.text, 'hello bworld/b'); // angle brackets stripped, trimmed
+    assert.ok(msg.seatId && typeof msg.ts === 'number');
+
+    // A third client joining gets the backlog via chatHistory.
+    const late = connect(srv.url);
+    const histP = once(late, 'chatHistory');
+    late.emit('join', { code, name: 'Cara' });
+    const [history] = await histP;
+    assert.ok(Array.isArray(history) && history.length >= 1);
+    assert.equal(history[history.length - 1].text, 'hello bworld/b');
+    late.close();
+  } finally {
+    host.close();
+    guest.close();
+    await srv.close();
+  }
+});

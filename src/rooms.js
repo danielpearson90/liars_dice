@@ -74,6 +74,8 @@ export class Room {
     this.hostId = null;
     this.game = null;
     this.botTimer = null; // pending scheduled bot move / reveal advance (server-side)
+    this.messages = []; // recent chat messages (capped); in-memory, dies with the room
+    this._msgId = 0;
     // Host-configurable room options, applied when a game is started.
     this.settings = {
       startingDice: STARTING_DICE,
@@ -139,6 +141,14 @@ export class Room {
     const last = bots[bots.length - 1];
     if (last) this.members.delete(last.id);
     return last || null;
+  }
+
+  /** Append a chat message, keeping only the most recent 50. */
+  addMessage(name, text, seatId) {
+    const msg = { id: ++this._msgId, seatId, name, text, ts: Date.now() };
+    this.messages.push(msg);
+    if (this.messages.length > 50) this.messages.shift();
+    return msg;
   }
 
   /** Find a member by its private reclaim token (null tokens never match). */

@@ -2,6 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RoomManager, Room } from '../src/rooms.js';
 
+test('addMessage stores chat and caps history at 50', () => {
+  const room = new Room('TEST');
+  const m = room.addMessage('Alice', 'hello', 'seat-1');
+  assert.equal(m.name, 'Alice');
+  assert.equal(m.text, 'hello');
+  assert.equal(m.seatId, 'seat-1');
+  assert.ok(typeof m.id === 'number' && typeof m.ts === 'number');
+
+  for (let i = 0; i < 60; i++) room.addMessage('Bob', `msg ${i}`, 'seat-2');
+  assert.equal(room.messages.length, 50); // capped
+  assert.equal(room.messages[room.messages.length - 1].text, 'msg 59'); // newest kept
+  assert.equal(room.messages[0].text, 'msg 10'); // oldest dropped
+});
+
 test('rooms get unique short codes and can be looked up case-insensitively', () => {
   const mgr = new RoomManager();
   const a = mgr.createRoom();

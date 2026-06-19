@@ -254,6 +254,75 @@ speechBtn.onclick = () => {
   if (nowOn) Speech.say('spot on', callKey('spot-on')); // confirm it works
 };
 
+// --- room chat -------------------------------------------------------------
+const chatBtn = document.getElementById('chatBtn');
+const chatPanel = document.getElementById('chatPanel');
+const chatLog = document.getElementById('chatLog');
+const chatInput = document.getElementById('chatInput');
+const chatUnread = document.getElementById('chatUnread');
+let chatOpen = false;
+let unread = 0;
+
+function showChatButton(on) {
+  chatBtn.classList.toggle('hidden', !on);
+  if (!on) {
+    chatPanel.classList.add('hidden');
+    chatLog.innerHTML = '';
+    chatOpen = false;
+    setUnread(0);
+  }
+}
+function setUnread(n) {
+  unread = n;
+  chatUnread.textContent = n > 9 ? '9+' : String(n);
+  chatUnread.classList.toggle('hidden', n === 0);
+}
+function openChat(open) {
+  chatOpen = open;
+  chatPanel.classList.toggle('hidden', !open);
+  if (open) {
+    setUnread(0);
+    chatLog.scrollTop = chatLog.scrollHeight;
+    chatInput.focus();
+  }
+}
+function appendChatMessage(msg) {
+  const atBottom = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 40;
+  const row = document.createElement('div');
+  row.className = 'chat-msg' + (msg.seatId === me ? ' mine' : '');
+  const who = document.createElement('span');
+  who.className = 'chat-who';
+  who.textContent = (msg.seatId === me ? 'You' : msg.name) + ': ';
+  const body = document.createElement('span');
+  body.textContent = msg.text; // textContent → XSS-safe
+  row.append(who, body);
+  chatLog.appendChild(row);
+  if (chatOpen && atBottom) chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+chatBtn.onclick = () => openChat(!chatOpen);
+document.getElementById('chatClose').onclick = () => openChat(false);
+document.getElementById('chatForm').onsubmit = (e) => {
+  e.preventDefault();
+  const text = chatInput.value.trim();
+  if (!text) return;
+  socket.emit('chat', { text });
+  chatInput.value = '';
+};
+
+socket.on('chatHistory', (msgs) => {
+  chatLog.innerHTML = '';
+  (msgs || []).forEach(appendChatMessage);
+  chatLog.scrollTop = chatLog.scrollHeight;
+});
+socket.on('chat', (msg) => {
+  appendChatMessage(msg);
+  if (!chatOpen && msg.seatId !== me) {
+    setUnread(unread + 1);
+    Sound.play('bid'); // subtle ping
+  }
+});
+
 // --- theme switcher --------------------------------------------------------
 const THEMES = ['theme-tavern', 'theme-midnight', 'theme-neon', 'theme-deco', 'theme-noir', 'theme-pixel'];
 const themeSelect = document.getElementById('themeSelect');
@@ -572,6 +641,7 @@ function leave() {
   me = null;
   lastState = null;
   forgetRoom();
+  showChatButton(false);
   history.replaceState(null, '', location.pathname);
   show('home');
 }
@@ -599,6 +669,7 @@ socket.on('joined', ({ code, you }) => {
   me = you;
   autoRejoining = false;
   rememberRoom(code);
+  showChatButton(true);
   history.replaceState(null, '', `/?room=${code}`);
 });
 socket.on('errorMsg', (msg) => {

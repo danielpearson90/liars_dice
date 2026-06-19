@@ -59,6 +59,10 @@ An optional voice (🗣️ button) reads bids and calls aloud — "4 fours", "li
 "spot on". By default it uses the browser's built-in speech synthesis. Both
 toggles are independent and remembered between visits.
 
+A **room text chat** (💬 button, bottom-right) lets everyone talk in the lobby
+and during the game, with an unread badge and recent history that loads when you
+(re)join.
+
 #### Higher-quality voice (optional)
 
 For consistent, natural voices on every device you can pre-generate clips — a

@@ -41,11 +41,27 @@ function broadcastRoom(room) {
   }
 }
 
+function broadcastChat(room, msg) {
+  for (const member of room.members.values()) {
+    if (!member.connected || !member.socketId) continue;
+    io.to(member.socketId).emit('chat', msg);
+  }
+}
+
 function sanitizeName(name) {
   return String(name || '')
     .trim()
     .slice(0, 20)
     .replace(/[<>]/g, '');
+}
+
+function sanitizeChat(text) {
+  return String(text || '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ') // control chars -> space
+    .replace(/[<>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 300);
 }
 
 const isBotSeat = (room, id) => !!room.members.get(id)?.isBot;
@@ -137,8 +153,24 @@ io.on('connection', (socket) => {
     socket.join(room.code);
     socketInfo.set(socket.id, { code: room.code, id: member.id });
     reply('joined', { code: room.code, you: member.id });
+    reply('chatHistory', room.messages); // load the backlog on (re)join
     broadcastRoom(room);
   };
+
+  let lastChatAt = 0; // light per-socket rate limit
+
+  socket.on('chat', ({ text } = {}) => {
+    const s = seat();
+    if (!s) return;
+    const member = s.room.members.get(s.id);
+    if (!member) return;
+    const clean = sanitizeChat(text);
+    if (!clean) return;
+    const now = Date.now();
+    if (now - lastChatAt < 350) return; // drop bursts
+    lastChatAt = now;
+    broadcastChat(s.room, s.room.addMessage(member.name, clean, member.id));
+  });
 
   socket.on('create', ({ name, token }) => {
     const clean = sanitizeName(name);

@@ -33,6 +33,19 @@
     <div id="netStatus" class="net-status hidden"></div>
     <div id="toast" class="toast hidden"></div>
 
+    <!-- Room chat (shown once you're in a room) -->
+    <button id="chatBtn" class="chat-btn hidden" title="Chat" aria-label="Chat">
+      💬<span id="chatUnread" class="chat-unread hidden"></span>
+    </button>
+    <section id="chatPanel" class="chat-panel hidden" aria-label="Room chat">
+      <div class="chat-head"><span>Room chat</span><button id="chatClose" aria-label="Close chat">×</button></div>
+      <div id="chatLog" class="chat-log"></div>
+      <form id="chatForm" class="chat-form">
+        <input id="chatInput" maxlength="300" placeholder="Message…" autocomplete="off" />
+        <button class="primary small" type="submit">Send</button>
+      </form>
+    </section>
+
     <!-- Home: create or join -->
     <main id="home" class="screen">
       <h1>🎲 Liar's Dice</h1>
