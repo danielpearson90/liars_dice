@@ -63,6 +63,9 @@ A **room text chat** (💬 button, bottom-right) lets everyone talk in the lobby
 and during the game, with an unread badge and recent history that loads when you
 (re)join.
 
+The sort button next to **Your dice** arranges your hand in ascending order (a
+local display preference, remembered between visits).
+
 #### Higher-quality voice (optional)
 
 For consistent, natural voices on every device you can pre-generate clips — a

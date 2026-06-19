@@ -491,9 +491,17 @@ body.theme-neon .die .pip { box-shadow: 0 0 6px var(--die-pip); }
 .die.rolling { animation: tumble .55s cubic-bezier(.2, .8, .3, 1.2) both; }
 
 .hand-cap {
-  text-align: center; margin: 6px 0 8px;
+  display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 0 8px;
   font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: var(--muted);
 }
+.sort-btn {
+  display: inline-grid; place-items: center; width: 28px; height: 22px; padding: 0;
+  border-radius: 6px; background: var(--panel-2); color: var(--muted);
+  border: 1px solid var(--border); cursor: pointer;
+}
+.sort-btn:hover { color: var(--text); }
+.sort-btn.active { background: var(--accent); color: var(--ink-accent); border-color: var(--accent); }
+.sort-btn svg { display: block; }
 .my-dice { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 0 0 18px; min-height: 46px; }
 
 /* ===========================================================================

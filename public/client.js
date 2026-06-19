@@ -496,6 +496,21 @@ let lastState = null; // most recent room view
 // Current bid being built. Both start unselected each turn (see renderGame).
 const bid = { quantity: null, face: null };
 let activeTurnKey = null; // identifies the turn the current selection belongs to
+let sortDice = localStorage.getItem('ld_sortdice') === '1'; // show own dice sorted
+
+// Sort-your-dice toggle (display only — never sent to the server).
+const sortDiceBtn = document.getElementById('sortDiceBtn');
+function paintSortDice() {
+  sortDiceBtn.classList.toggle('active', sortDice);
+  sortDiceBtn.title = sortDice ? 'Showing sorted — tap for roll order' : 'Sort ascending';
+}
+paintSortDice();
+sortDiceBtn.onclick = () => {
+  sortDice = !sortDice;
+  localStorage.setItem('ld_sortdice', sortDice ? '1' : '0');
+  paintSortDice();
+  if (lastState && lastState.game) renderMyDice(lastState.game);
+};
 
 // Pip layout per die value.
 const PIPS = {
@@ -943,7 +958,9 @@ function renderMyDice(g) {
   cap.classList.remove('hidden');
   const animate = pendingRoll; // only tumble right after a fresh deal
   pendingRoll = false;
-  you.dice.forEach((v, i) => {
+  // Show in roll order, or sorted ascending if the player prefers it.
+  const dice = sortDice ? [...you.dice].sort((a, b) => a - b) : you.dice;
+  dice.forEach((v, i) => {
     const die = dieEl(v);
     if (animate) {
       die.classList.add('rolling');

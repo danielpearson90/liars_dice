@@ -117,7 +117,16 @@
       <!-- The bid to beat, presented as a centerpiece just above your hand. -->
       <section id="currentBid" class="current-bid hidden"></section>
 
-      <p id="myDiceCap" class="hand-cap hidden">Your dice</p>
+      <div id="myDiceCap" class="hand-cap hidden">
+        <span>Your dice</span>
+        <button id="sortDiceBtn" class="sort-btn" title="Sort ascending" aria-label="Sort dice ascending">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+            <rect x="3" y="14" width="4" height="7" rx="1"></rect>
+            <rect x="10" y="9" width="4" height="12" rx="1"></rect>
+            <rect x="17" y="4" width="4" height="17" rx="1"></rect>
+          </svg>
+        </button>
+      </div>
       <section id="myDice" class="my-dice"></section>
 
       <section id="controls" class="controls hidden">
