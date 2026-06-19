@@ -23,7 +23,16 @@ const REVEAL_ADVANCE_MS = 6000;
 
 export function createServer() {
 const app = express();
-app.use(express.static(path.join(__dirname, 'public')));
+// `no-cache` = always revalidate (via ETag), so a client never runs a stale
+// index.html/client.js pair after an update. Clips are immutable, so let those
+// cache hard.
+app.use(
+  express.static(path.join(__dirname, 'public'), {
+    setHeaders(res, filePath) {
+      res.setHeader('Cache-Control', filePath.includes('/tts/') ? 'max-age=604800' : 'no-cache');
+    },
+  })
+);
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
 const server = http.createServer(app);

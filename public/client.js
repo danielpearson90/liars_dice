@@ -264,6 +264,7 @@ let chatOpen = false;
 let unread = 0;
 
 function showChatButton(on) {
+  if (!chatBtn) return;
   chatBtn.classList.toggle('hidden', !on);
   if (!on) {
     chatPanel.classList.add('hidden');
@@ -273,11 +274,13 @@ function showChatButton(on) {
   }
 }
 function setUnread(n) {
+  if (!chatUnread) return;
   unread = n;
   chatUnread.textContent = n > 9 ? '9+' : String(n);
   chatUnread.classList.toggle('hidden', n === 0);
 }
 function openChat(open) {
+  if (!chatPanel) return;
   chatOpen = open;
   chatPanel.classList.toggle('hidden', !open);
   if (open) {
@@ -287,6 +290,7 @@ function openChat(open) {
   }
 }
 function appendChatMessage(msg) {
+  if (!chatLog) return;
   const atBottom = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 40;
   const row = document.createElement('div');
   row.className = 'chat-msg' + (msg.seatId === me ? ' mine' : '');
@@ -300,15 +304,17 @@ function appendChatMessage(msg) {
   if (chatOpen && atBottom) chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-chatBtn.onclick = () => openChat(!chatOpen);
-document.getElementById('chatClose').onclick = () => openChat(false);
-document.getElementById('chatForm').onsubmit = (e) => {
-  e.preventDefault();
-  const text = chatInput.value.trim();
-  if (!text) return;
-  socket.emit('chat', { text });
-  chatInput.value = '';
-};
+if (chatBtn) {
+  chatBtn.onclick = () => openChat(!chatOpen);
+  document.getElementById('chatClose').onclick = () => openChat(false);
+  document.getElementById('chatForm').onsubmit = (e) => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    if (!text) return;
+    socket.emit('chat', { text });
+    chatInput.value = '';
+  };
+}
 
 socket.on('chatHistory', (msgs) => {
   chatLog.innerHTML = '';
@@ -501,16 +507,19 @@ let sortDice = localStorage.getItem('ld_sortdice') === '1'; // show own dice sor
 // Sort-your-dice toggle (display only — never sent to the server).
 const sortDiceBtn = document.getElementById('sortDiceBtn');
 function paintSortDice() {
+  if (!sortDiceBtn) return;
   sortDiceBtn.classList.toggle('active', sortDice);
   sortDiceBtn.title = sortDice ? 'Showing sorted — tap for roll order' : 'Sort ascending';
 }
-paintSortDice();
-sortDiceBtn.onclick = () => {
-  sortDice = !sortDice;
-  localStorage.setItem('ld_sortdice', sortDice ? '1' : '0');
+if (sortDiceBtn) {
   paintSortDice();
-  if (lastState && lastState.game) renderMyDice(lastState.game);
-};
+  sortDiceBtn.onclick = () => {
+    sortDice = !sortDice;
+    localStorage.setItem('ld_sortdice', sortDice ? '1' : '0');
+    paintSortDice();
+    if (lastState && lastState.game) renderMyDice(lastState.game);
+  };
+}
 
 // Pip layout per die value.
 const PIPS = {
@@ -621,12 +630,15 @@ $('bidBtn').onclick = () => {
 };
 $('challengeBtn').onclick = () => socket.emit('challenge');
 $('spotBtn').onclick = () => socket.emit('spotOn');
-$('readyBtn').onclick = () => {
-  const g = lastState && lastState.game;
-  if (!g) return;
-  const amReady = (g.readyIds || []).includes(me);
-  socket.emit('ready', { ready: !amReady }); // toggle
-};
+const readyBtn = $('readyBtn');
+if (readyBtn) {
+  readyBtn.onclick = () => {
+    const g = lastState && lastState.game;
+    if (!g) return;
+    const amReady = (g.readyIds || []).includes(me);
+    socket.emit('ready', { ready: !amReady }); // toggle
+  };
+}
 $('rematchBtn').onclick = () => socket.emit('rematch');
 $('leaveGame').onclick = leave;
 
