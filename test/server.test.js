@@ -149,6 +149,38 @@ test('chat: messages broadcast, sanitize, and replay as history on join', async 
   }
 });
 
+test('reactions broadcast (with sender id) and reject unlisted emoji', async () => {
+  const srv = await launch();
+  const host = connect(srv.url);
+  const guest = connect(srv.url);
+  try {
+    host.emit('create', { name: 'Alice' });
+    const [{ code, you: hostId }] = await once(host, 'joined');
+    guest.emit('join', { code, name: 'Bob' });
+    await once(guest, 'joined');
+
+    const recv = once(guest, 'reaction');
+    host.emit('reaction', { emoji: '😂' });
+    const [r] = await recv;
+    assert.equal(r.emoji, '😂');
+    assert.equal(r.seatId, hostId);
+    assert.equal(r.name, 'Alice');
+
+    // An emoji outside the whitelist is dropped — guest sees nothing.
+    let leaked = false;
+    guest.on('reaction', () => {
+      leaked = true;
+    });
+    host.emit('reaction', { emoji: '💣' });
+    await new Promise((r2) => setTimeout(r2, 150));
+    assert.equal(leaked, false);
+  } finally {
+    host.close();
+    guest.close();
+    await srv.close();
+  }
+});
+
 test('reveal advances only once every human is ready', async () => {
   const srv = await launch();
   const host = connect(srv.url);

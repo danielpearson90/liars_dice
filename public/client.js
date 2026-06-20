@@ -1,6 +1,7 @@
 /* global io */
 import { pAtLeast } from './probability.js';
 import { bidKey, callKey } from './tts-keys.js';
+import { REACTIONS } from './reactions.js';
 
 const socket = io();
 const MAX_STARTING_DICE = 20;
@@ -328,6 +329,93 @@ socket.on('chat', (msg) => {
     Sound.play('bid'); // subtle ping
   }
 });
+
+// --- emoji reactions -------------------------------------------------------
+const reactionBtn = document.getElementById('reactionBtn');
+const reactionPalette = document.getElementById('reactionPalette');
+const reactionLayer = document.getElementById('reactionLayer');
+const reduceMotion =
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function showReactionButton(on) {
+  if (!reactionBtn) return;
+  reactionBtn.classList.toggle('hidden', !on);
+  if (!on) setPalette(false);
+}
+function setPalette(open) {
+  if (reactionPalette) reactionPalette.classList.toggle('hidden', !open);
+}
+if (reactionPalette) {
+  for (const emoji of REACTIONS) {
+    const b = document.createElement('button');
+    b.className = 'reaction-emoji-btn';
+    b.type = 'button';
+    b.textContent = emoji;
+    b.onclick = () => {
+      socket.emit('reaction', { emoji });
+      setPalette(false);
+    };
+    reactionPalette.appendChild(b);
+  }
+}
+if (reactionBtn) {
+  reactionBtn.onclick = (e) => {
+    e.stopPropagation();
+    setPalette(reactionPalette.classList.contains('hidden'));
+  };
+  // Close the palette when clicking elsewhere.
+  document.addEventListener('click', (e) => {
+    if (
+      reactionPalette &&
+      !reactionPalette.classList.contains('hidden') &&
+      !reactionPalette.contains(e.target)
+    ) {
+      setPalette(false);
+    }
+  });
+}
+
+// Find the on-screen name element for a seat (game roster or lobby list).
+function findSeatEl(seatId) {
+  if (!seatId) return null;
+  for (const el of document.querySelectorAll('.player[data-id], .member-list li[data-id]')) {
+    if (el.dataset.id === seatId) return el;
+  }
+  return null;
+}
+
+// Rain a shower of `emoji` down from the sender's name.
+function spawnReaction(emoji, seatId) {
+  if (!reactionLayer || !REACTIONS.includes(emoji)) return;
+  const el = findSeatEl(seatId);
+  let originX = innerWidth / 2;
+  let originY = 48;
+  if (el) {
+    const r = el.getBoundingClientRect();
+    originX = r.left + Math.min(70, r.width / 2);
+    originY = r.top + r.height / 2;
+  }
+  const count = reduceMotion ? 3 : 11;
+  for (let i = 0; i < count; i++) {
+    const span = document.createElement('span');
+    span.className = 'reaction-emoji';
+    span.textContent = emoji;
+    span.style.left = `${originX}px`;
+    span.style.top = `${originY}px`;
+    span.style.fontSize = `${20 + Math.random() * 18}px`;
+    if (reduceMotion) {
+      span.style.animation = 'reactionFade 1.4s ease-out forwards';
+    } else {
+      span.style.setProperty('--dx', `${(Math.random() - 0.5) * 170}px`);
+      span.style.animation = `reactionFall ${(2.2 + Math.random() * 1.4).toFixed(2)}s ease-in forwards`;
+      span.style.animationDelay = `${(Math.random() * 0.4).toFixed(2)}s`;
+    }
+    span.addEventListener('animationend', () => span.remove());
+    reactionLayer.appendChild(span);
+  }
+}
+socket.on('reaction', ({ emoji, seatId } = {}) => spawnReaction(emoji, seatId));
 
 // --- theme switcher --------------------------------------------------------
 const THEMES = ['theme-tavern', 'theme-midnight', 'theme-neon', 'theme-deco', 'theme-noir', 'theme-pixel'];
@@ -676,6 +764,7 @@ function leave() {
   forgetRoom();
   stopRevealBar();
   showChatButton(false);
+  showReactionButton(false);
   history.replaceState(null, '', location.pathname);
   show('home');
 }
@@ -704,6 +793,7 @@ socket.on('joined', ({ code, you }) => {
   autoRejoining = false;
   rememberRoom(code);
   showChatButton(true);
+  showReactionButton(true);
   history.replaceState(null, '', `/?room=${code}`);
 });
 socket.on('errorMsg', (msg) => {
@@ -747,6 +837,7 @@ function renderLobby(state) {
   list.innerHTML = '';
   for (const m of state.members) {
     const li = document.createElement('li');
+    li.dataset.id = m.id; // origin for emoji reactions
     const name = document.createElement('span');
     name.className = 'pname';
     name.textContent = m.name;
@@ -855,6 +946,7 @@ function renderPlayers(state) {
   for (const p of g.players) {
     const row = document.createElement('div');
     row.className = 'player';
+    row.dataset.id = p.id; // origin for emoji reactions
     if (g.turnId === p.id && g.phase === 'playing') row.classList.add('turn');
     if (p.eliminated) row.classList.add('out');
     const isAway = away.has(p.id) && !p.eliminated;

@@ -9,7 +9,9 @@ import express from 'express';
 import { Server } from 'socket.io';
 import { RoomManager, MAX_PLAYERS } from './src/rooms.js';
 import { decideMove } from './src/bot.js';
+import { REACTIONS } from './public/reactions.js';
 
+const REACTION_SET = new Set(REACTIONS);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 
@@ -55,6 +57,13 @@ function broadcastChat(room, msg) {
   for (const member of room.members.values()) {
     if (!member.connected || !member.socketId) continue;
     io.to(member.socketId).emit('chat', msg);
+  }
+}
+
+function broadcastReaction(room, payload) {
+  for (const member of room.members.values()) {
+    if (!member.connected || !member.socketId) continue;
+    io.to(member.socketId).emit('reaction', payload);
   }
 }
 
@@ -208,6 +217,7 @@ io.on('connection', (socket) => {
   };
 
   let lastChatAt = 0; // light per-socket rate limit
+  let lastReactionAt = 0;
 
   socket.on('chat', ({ text } = {}) => {
     const s = seat();
@@ -220,6 +230,18 @@ io.on('connection', (socket) => {
     if (now - lastChatAt < 350) return; // drop bursts
     lastChatAt = now;
     broadcastChat(s.room, s.room.addMessage(member.name, clean, member.id));
+  });
+
+  // Ephemeral emoji reactions — broadcast (whitelisted), never stored.
+  socket.on('reaction', ({ emoji } = {}) => {
+    const s = seat();
+    if (!s) return;
+    const member = s.room.members.get(s.id);
+    if (!member || !REACTION_SET.has(emoji)) return;
+    const now = Date.now();
+    if (now - lastReactionAt < 250) return; // drop bursts
+    lastReactionAt = now;
+    broadcastReaction(s.room, { emoji, seatId: member.id, name: member.name });
   });
 
   socket.on('create', ({ name, token }) => {
