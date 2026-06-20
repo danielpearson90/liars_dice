@@ -262,3 +262,45 @@ test('reveal auto-advances after the timeout even if nobody readies', async () =
     else process.env.REVEAL_TIMEOUT_MS = prev;
   }
 });
+
+test('"back to lobby" after game over clears the game so settings can change', async () => {
+  const srv = await launch();
+  const host = connect(srv.url);
+  const guest = connect(srv.url);
+  try {
+    host.emit('create', { name: 'Alice' });
+    const [{ code, you: hostId }] = await once(host, 'joined');
+    const joined = waitState(host, (s) => s.members.length === 2);
+    guest.emit('join', { code, name: 'Bob' });
+    await once(guest, 'joined');
+    await joined;
+
+    // One die each → a single challenge ends the game.
+    const set = waitState(host, (s) => s.settings.startingDice === 1);
+    host.emit('updateSettings', { startingDice: 1 });
+    await set;
+
+    const started = waitState(host, (s) => s.game && s.game.phase === 'playing');
+    host.emit('start');
+    const s0 = await started;
+    const first = s0.game.turnId === hostId ? host : guest;
+    const second = s0.game.turnId === hostId ? guest : host;
+    const afterBid = waitState(second, (s) => s.game.currentBid !== null);
+    first.emit('bid', { quantity: 1, face: 2 });
+    await afterBid;
+    const over = waitState(host, (s) => s.game.phase === 'gameover');
+    second.emit('challenge');
+    await over;
+
+    // Host returns everyone to the lobby (game cleared, settings editable again).
+    const back = waitState(guest, (s) => s.game === null);
+    host.emit('rematch');
+    const lobby = await back;
+    assert.equal(lobby.game, null);
+    assert.ok(lobby.settings && lobby.members.length === 2);
+  } finally {
+    host.close();
+    guest.close();
+    await srv.close();
+  }
+});

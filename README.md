@@ -73,7 +73,8 @@ emoji rains down from your name in the roster, on everyone's screen.
 At **game over** each player gets a recap: headline awards (🎯 Sharpshooter,
 🎲 Spot On King, 🛡️ Stonewall, 🤥 Caught Out) plus a full per-player stat table
 (bids, Liar/Spot-on hits & misses, times caught, bids held, dice lost to others'
-Spot-ons). Per match — it resets on **Play again**.
+Spot-ons). Per match — it resets when the host sends everyone **back to the
+lobby** to start another game (where ruleset, dice, and bots can be changed).
 
 The sort button next to **Your dice** arranges your hand in ascending order (a
 local display preference, remembered between visits).

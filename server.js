@@ -349,15 +349,18 @@ io.on('connection', (socket) => {
     maybeAdvanceReveal(s.room);
   });
 
-  // Host can start a brand-new game with the same lobby after game over.
+  // Host sends everyone back to the lobby after game over, where settings
+  // (ruleset, dice, bots) can be changed before starting another game.
   socket.on('rematch', () => {
     const s = seat();
     if (!s || s.room.hostId !== s.id) return;
-    if (s.room.game && s.room.game.phase !== 'gameover') return;
-    if (s.room.size < 2) return reply('errorMsg', 'Need at least 2 players.');
-    s.room.startGame();
+    if (!s.room.game || s.room.game.phase !== 'gameover') return;
+    if (s.room.botTimer) {
+      clearTimeout(s.room.botTimer);
+      s.room.botTimer = null;
+    }
+    s.room.game = null; // -> clients render the lobby; settings unlock
     broadcastRoom(s.room);
-    driveBots(s.room);
   });
 
   socket.on('leave', () => handleLeave(socket));
