@@ -376,11 +376,13 @@ if (reactionBtn) {
   });
 }
 
-// Find the on-screen name element for a seat (game roster or lobby list).
+// Find the *visible* name element for a seat (game roster or lobby list). Both
+// screens exist in the DOM at once; the inactive one is display:none (so its
+// rect is all zeros), hence the offsetParent check to skip it.
 function findSeatEl(seatId) {
   if (!seatId) return null;
   for (const el of document.querySelectorAll('.player[data-id], .member-list li[data-id]')) {
-    if (el.dataset.id === seatId) return el;
+    if (el.dataset.id === seatId && el.offsetParent !== null) return el;
   }
   return null;
 }
