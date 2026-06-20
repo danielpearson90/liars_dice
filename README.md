@@ -70,6 +70,11 @@ and during the game, with an unread badge and recent history that loads when you
 **Emoji reactions** (😀 button) — pick from a small set and a shower of that
 emoji rains down from your name in the roster, on everyone's screen.
 
+At **game over** each player gets a recap: headline awards (🎯 Sharpshooter,
+🎲 Spot On King, 🛡️ Stonewall, 🤥 Caught Out) plus a full per-player stat table
+(bids, Liar/Spot-on hits & misses, times caught, bids held, dice lost to others'
+Spot-ons). Per match — it resets on **Play again**.
+
 The sort button next to **Your dice** arranges your hand in ascending order (a
 local display preference, remembered between visits).
 

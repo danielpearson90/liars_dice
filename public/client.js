@@ -933,8 +933,102 @@ function renderGame(state) {
     $('winnerText').textContent = winner
       ? `🏆 ${winner.isYou ? 'You win!' : winner.name + ' wins!'}`
       : 'Game over';
+    renderGameStats(state);
     $('rematchBtn').classList.toggle('hidden', state.hostId !== me);
   }
+}
+
+// The end-of-game recap: headline awards + a full per-player stat table.
+const STAT_COLS = [
+  ['bids', 'Bids', 'Bids made'],
+  ['liarSuccess', 'Liar ✓', 'Called Liar correctly (it was a lie)'],
+  ['liarFail', 'Liar ✗', 'Called Liar but the bid held'],
+  ['spotSuccess', 'Spot ✓', 'Spot-on was exact'],
+  ['spotFail', 'Spot ✗', 'Spot-on was wrong'],
+  ['caughtLying', 'Caught', 'Bid was caught as a lie'],
+  ['challengedHeld', 'Held', 'Bid was challenged but held up'],
+  ['spotOnAgainst', 'Spot vs', 'Dice lost to others’ Spot-ons'],
+];
+
+function renderGameStats(state) {
+  const g = state.game;
+  const box = $('gameStats');
+  box.innerHTML = '';
+  const players = g.players;
+  const botIds = new Set((state.members || []).filter((m) => m.isBot).map((m) => m.id));
+
+  // --- Awards (only shown when there's a positive standout) ---
+  const awardDefs = [
+    ['🎯', 'Sharpshooter', 'liarSuccess'],
+    ['🎲', 'Spot On King', 'spotSuccess'],
+    ['🛡️', 'Stonewall', 'challengedHeld'],
+    ['🤥', 'Caught Out', 'caughtLying'],
+  ];
+  const awards = document.createElement('div');
+  awards.className = 'stat-awards';
+  // Winner first.
+  const winner = players.find((p) => p.id === g.winnerId);
+  if (winner) awards.appendChild(awardChip('🏆', 'Winner', [winner]));
+  for (const [icon, label, key] of awardDefs) {
+    const best = Math.max(...players.map((p) => p.stats[key]));
+    if (best <= 0) continue;
+    awards.appendChild(awardChip(icon, label, players.filter((p) => p.stats[key] === best)));
+  }
+  if (awards.children.length) box.appendChild(awards);
+
+  // --- Full table ---
+  const order = [...players].sort(
+    (a, b) => (b.id === g.winnerId) - (a.id === g.winnerId) || b.diceCount - a.diceCount
+  );
+  const wrap = document.createElement('div');
+  wrap.className = 'stat-table-wrap';
+  const table = document.createElement('table');
+  table.className = 'stat-table';
+  const thead = document.createElement('tr');
+  thead.appendChild(th('Player', ''));
+  for (const [, label, tip] of STAT_COLS) thead.appendChild(th(label, tip));
+  const head = document.createElement('thead');
+  head.appendChild(thead);
+  table.appendChild(head);
+  const body = document.createElement('tbody');
+  for (const p of order) {
+    const tr = document.createElement('tr');
+    if (p.id === g.winnerId) tr.className = 'winner';
+    const nameCell = document.createElement('td');
+    nameCell.className = 'stat-name';
+    nameCell.textContent = (botIds.has(p.id) ? '🤖 ' : '') + p.name + (p.isYou ? ' (you)' : '');
+    tr.appendChild(nameCell);
+    for (const [key] of STAT_COLS) {
+      const td = document.createElement('td');
+      td.textContent = p.stats[key];
+      if (!p.stats[key]) td.className = 'zero';
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+  table.appendChild(body);
+  wrap.appendChild(table);
+  box.appendChild(wrap);
+}
+
+function awardChip(icon, label, winners) {
+  const el = document.createElement('div');
+  el.className = 'award';
+  const ic = document.createElement('span');
+  ic.className = 'award-ic';
+  ic.textContent = icon;
+  const txt = document.createElement('span');
+  const names = winners.map((p) => (p.isYou ? 'You' : p.name)).join(', ');
+  txt.textContent = `${label}: ${names}`;
+  el.append(ic, txt);
+  return el;
+}
+
+function th(label, tip) {
+  const el = document.createElement('th');
+  el.textContent = label;
+  if (tip) el.title = tip;
+  return el;
 }
 
 function renderPlayers(state) {

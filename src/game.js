@@ -109,6 +109,19 @@ export class Game {
       diceCount: this.startingDice,
       eliminated: false,
       lastBid: null, // this player's current standing bid, cleared each round
+      // Per-match tallies, shown at game over. Reset with each new Game.
+      stats: {
+        bids: 0,
+        liarSuccess: 0, // they called Liar and the bid was a lie
+        liarFail: 0, // they called Liar but the bid held
+        spotSuccess: 0, // their Spot-on was exact
+        spotFail: 0, // their Spot-on was wrong
+        caughtLying: 0, // their bid was challenged and exposed as a lie
+        challengedHeld: 0, // their bid was challenged but held up
+        spotOnAgainst: 0, // lost a die to someone else's correct Spot-on
+        diceLost: 0,
+        diceGained: 0,
+      },
     }));
     this.phase = 'playing'; // 'playing' | 'reveal' | 'gameover'
     this.currentBid = null; // { playerId, quantity, face }
@@ -195,7 +208,9 @@ export class Game {
     }
 
     this.currentBid = { playerId, quantity, face };
-    this.getPlayer(playerId).lastBid = { quantity, face }; // overwrite their chip
+    const bidder = this.getPlayer(playerId);
+    bidder.lastBid = { quantity, face }; // overwrite their chip
+    bidder.stats.bids += 1;
     this.turnId = this.nextActiveId(playerId);
     return { type: 'bid', playerId, quantity, face };
   }
@@ -236,6 +251,13 @@ export class Game {
     const { quantity, face, playerId: bidderId } = this.currentBid;
     const actual = this.countFace(face);
     const bidWasGood = actual >= quantity;
+    if (bidWasGood) {
+      this.getPlayer(playerId).stats.liarFail += 1; // challenger was wrong
+      this.getPlayer(bidderId).stats.challengedHeld += 1; // bid survived
+    } else {
+      this.getPlayer(playerId).stats.liarSuccess += 1; // challenger was right
+      this.getPlayer(bidderId).stats.caughtLying += 1; // bid exposed as a lie
+    }
     // Normally the player who was WRONG loses a die. Under the shed-all goal,
     // losing dice is the aim, so the player who was RIGHT sheds one instead.
     const targetId =
@@ -267,6 +289,7 @@ export class Game {
     const { quantity, face, playerId: bidderId } = this.currentBid;
     const actual = this.countFace(face);
     const exact = actual === quantity;
+    this.getPlayer(playerId).stats[exact ? 'spotSuccess' : 'spotFail'] += 1;
 
     const others = () => this.activePlayers().filter((p) => p.id !== playerId).map((p) => p.id);
     const reveal = {
@@ -318,6 +341,11 @@ export class Game {
       const loser = this.getPlayer(loserId);
       if (!loser || loser.eliminated) continue;
       loser.diceCount -= 1;
+      loser.stats.diceLost += 1;
+      // A die lost to someone else's correct Spot-on.
+      if (reveal.kind === 'spot-on' && loserId !== reveal.callerId) {
+        loser.stats.spotOnAgainst += 1;
+      }
       if (loser.diceCount <= 0) {
         loser.diceCount = 0;
         if (!shedAll) loser.eliminated = true;
@@ -331,8 +359,10 @@ export class Game {
     for (const gid of gainIds) {
       const gainer = this.getPlayer(gid);
       if (!gainer || gainer.eliminated) continue;
-      if (gainer.diceCount < this.startingDice) gainer.diceCount += 1;
-      else if (gid === reveal.gainerId) reveal.gainerCapped = true;
+      if (gainer.diceCount < this.startingDice) {
+        gainer.diceCount += 1;
+        gainer.stats.diceGained += 1;
+      } else if (gid === reveal.gainerId) reveal.gainerCapped = true;
     }
 
     this.lastReveal = reveal;
@@ -429,6 +459,7 @@ export class Game {
         diceCount: p.diceCount,
         eliminated: p.eliminated,
         lastBid: p.lastBid,
+        stats: p.stats,
         isYou: p.id === viewerId,
         // Reveal your own dice always; everyone else's only at reveal time.
         dice: p.id === viewerId || reveal ? [...p.dice] : null,

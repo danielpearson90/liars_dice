@@ -208,6 +208,61 @@ test('ready votes are tracked during the reveal and cleared each round', () => {
   assert.equal(g.readyIds.size, 0);
 });
 
+// --- per-match stats -------------------------------------------------------
+
+test('challenge updates caller and bidder stats (lie vs held)', () => {
+  // p0: three 2s ; a bid of "four 2s" is a lie, "three 2s" holds.
+  const dice = [2, 2, 2, 4, 5, 6, 1, 3, 4, 5];
+  let g = gameWithDice(2, dice);
+  g.bid('p0', 4, 2); // lie
+  g.challenge('p1');
+  assert.equal(g.getPlayer('p1').stats.liarSuccess, 1);
+  assert.equal(g.getPlayer('p0').stats.caughtLying, 1);
+  assert.equal(g.getPlayer('p0').stats.bids, 1);
+  assert.equal(g.getPlayer('p0').stats.diceLost, 1); // bidder lost the die
+
+  g = gameWithDice(2, dice);
+  g.bid('p0', 3, 2); // holds (exactly three)
+  g.challenge('p1');
+  assert.equal(g.getPlayer('p1').stats.liarFail, 1);
+  assert.equal(g.getPlayer('p0').stats.challengedHeld, 1);
+  assert.equal(g.getPlayer('p1').stats.diceLost, 1); // challenger lost the die
+});
+
+test('spot-on stats: exact rewards caller, charges every other loser', () => {
+  const g = makeGame(3, [1], { ruleset: 'common-hand' });
+  g.getPlayer('p0').dice = [5, 5, 2, 3, 4]; // two 5s
+  g.getPlayer('p1').dice = [3, 3, 3, 3, 3];
+  g.getPlayer('p2').dice = [4, 4, 4, 4, 4];
+  g.bid('p0', 2, 5); // exactly two 5s
+  g.turnId = 'p1';
+  g.spotOn('p1');
+  assert.equal(g.getPlayer('p1').stats.spotSuccess, 1);
+  // Everyone except the caller loses a die to the correct spot-on.
+  for (const id of ['p0', 'p2']) {
+    assert.equal(g.getPlayer(id).stats.spotOnAgainst, 1, id);
+    assert.equal(g.getPlayer(id).stats.diceLost, 1, id);
+  }
+  assert.equal(g.getPlayer('p1').stats.spotOnAgainst, 0); // caller not charged
+});
+
+test('spot-on stats: a wrong call charges the caller', () => {
+  const g = makeGame(2, [1], { ruleset: 'common-hand' });
+  g.getPlayer('p0').dice = [5, 2, 3, 4, 6]; // one 5
+  g.getPlayer('p1').dice = [1, 1, 1, 1, 1];
+  g.bid('p0', 2, 5); // claims two; only one
+  g.turnId = 'p1';
+  g.spotOn('p1');
+  assert.equal(g.getPlayer('p1').stats.spotFail, 1);
+  assert.equal(g.getPlayer('p1').stats.diceLost, 1);
+  assert.equal(g.getPlayer('p1').stats.spotOnAgainst, 0);
+});
+
+test('toView exposes per-player stats', () => {
+  const g = gameWithDice(2, [1]);
+  assert.deepEqual(g.toView('p0').players[0].stats, g.getPlayer('p0').stats);
+});
+
 test('cannot challenge or call spot-on with no bid', () => {
   const g = gameWithDice(2, [1]);
   assert.throws(() => g.challenge('p0'), /no bid/i);

@@ -613,6 +613,30 @@ body.theme-neon .die .pip { box-shadow: 0 0 6px var(--die-pip); }
 .game-over { text-align: center; }
 .game-over h2 { font-size: 1.7rem; }
 
+/* End-of-game stats */
+.game-stats { margin: 14px 0 18px; }
+.stat-awards { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 14px; }
+.award {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px;
+  padding: 5px 12px 5px 8px; font-size: .85rem;
+}
+.award-ic { font-size: 1.1rem; }
+.stat-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.stat-table {
+  border-collapse: collapse; margin: 0 auto; font-size: .85rem;
+  min-width: max-content;
+}
+.stat-table th, .stat-table td {
+  padding: 6px 9px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.stat-table th { color: var(--muted); font-weight: 600; cursor: help; }
+.stat-table td.stat-name, .stat-table th:first-child { text-align: left; }
+.stat-table td.stat-name { font-weight: 600; }
+.stat-table td.zero { color: var(--muted); opacity: .5; }
+.stat-table tr.winner td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.stat-table tr.winner td.stat-name { color: var(--accent); }
+
 /* ===========================================================================
    Current bid — the centerpiece above the player's dice
    =========================================================================== */
