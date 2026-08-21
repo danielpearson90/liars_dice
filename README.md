@@ -222,3 +222,10 @@ npx localtunnel --port 3000   # terminal 2 — gives you a shareable URL
 - **`public/`** — vanilla HTML/CSS/JS client (no build step).
 
 Rooms live in memory, so a server restart clears all games.
+
+## Also in this repo
+
+**[`estimation/`](estimation/)** — Estimation (the trick-taking card game), speed-round
+variant, for 2–5 players. Same stack, its own self-contained app: `cd estimation
+&& npm install && npm start`. See [`estimation/README.md`](estimation/README.md)
+for its rules and deploy notes.

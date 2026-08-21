@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>Estimation</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🃏</text></svg>" />
+  </head>
+  <body>
+    <div id="netStatus" class="net-status hidden"></div>
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Room chat (shown once you're in a room) -->
+    <button id="chatBtn" class="chat-btn hidden" title="Chat" aria-label="Chat">
+      💬<span id="chatUnread" class="chat-unread hidden"></span>
+    </button>
+    <section id="chatPanel" class="chat-panel hidden" aria-label="Room chat">
+      <div class="chat-head"><span>Room chat</span><button id="chatClose" aria-label="Close chat">×</button></div>
+      <div id="chatLog" class="chat-log"></div>
+      <form id="chatForm" class="chat-form">
+        <input id="chatInput" maxlength="300" placeholder="Message…" autocomplete="off" />
+        <button class="primary small" type="submit">Send</button>
+      </form>
+    </section>
+
+    <!-- Emoji reactions (shown once you're in a room) -->
+    <button id="reactionBtn" class="reaction-btn hidden" title="React" aria-label="Send a reaction">😀</button>
+    <div id="reactionPalette" class="reaction-palette hidden" role="menu" aria-label="Reactions"></div>
+    <div id="reactionLayer" class="reaction-layer" aria-hidden="true"></div>
+
+    <!-- Home: create or join -->
+    <main id="home" class="screen">
+      <h1>🃏 Estimation</h1>
+      <p class="tagline">Speed rounds · no trump auction · 2–5 players</p>
+      <div class="card">
+        <label>Your name
+          <input id="name" maxlength="20" placeholder="e.g. Sam" autocomplete="off" />
+        </label>
+        <button id="createBtn" class="primary">Create a game</button>
+        <div class="divider"><span>or join one</span></div>
+        <label>Room code
+          <input id="code" maxlength="4" placeholder="ABCD" autocomplete="off" style="text-transform:uppercase" />
+        </label>
+        <button id="joinBtn">Join game</button>
+      </div>
+    </main>
+
+    <!-- Lobby -->
+    <main id="lobby" class="screen hidden">
+      <h2>Lobby</h2>
+      <div class="code-banner">
+        Room code: <strong id="lobbyCode"></strong>
+        <button id="copyCode" class="ghost small">Copy invite link</button>
+      </div>
+      <ul id="memberList" class="member-list"></ul>
+
+      <div class="settings card">
+        <h3>Game settings</h3>
+        <div class="setting-row">
+          <span>Cycles (No-trump, ♠, ♥, ♦, ♣)</span>
+          <div class="stepper small-stepper">
+            <button id="cyclesDown" data-dir="-1">−</button>
+            <span id="cyclesVal" class="stepper-value"><span>2</span></span>
+            <button id="cyclesUp" data-dir="1">+</button>
+          </div>
+        </div>
+        <p id="cyclesDesc" class="hint ruleset-desc"></p>
+        <p id="settingsHint" class="hint"></p>
+      </div>
+
+      <button id="startBtn" class="primary hidden">Start game</button>
+      <p id="lobbyHint" class="hint"></p>
+      <button id="leaveLobby" class="ghost small">Leave</button>
+    </main>
+
+    <!-- Game -->
+    <main id="game" class="screen hidden">
+      <header class="game-header">
+        <span id="roundLabel" class="pill"></span>
+        <span id="trumpPill" class="pill trump-pill"></span>
+        <span id="dealtOutPill" class="pill dealt-out-pill hidden"></span>
+      </header>
+
+      <section id="players" class="players"></section>
+
+      <section id="trick" class="trick"></section>
+
+      <section id="estimatePanel" class="estimate-panel hidden"></section>
+
+      <section id="roundSummary" class="round-summary hidden">
+        <h3 id="roundSummaryTitle"></h3>
+        <div id="roundSummaryTable" class="summary-table-wrap"></div>
+        <div class="ready-progress"><span id="readyProgressFill"></span></div>
+        <button id="readyBtn" class="primary">Ready</button>
+        <p id="readyStatus" class="ready-status"></p>
+      </section>
+
+      <div id="myHandCap" class="hand-cap hidden"></div>
+      <section id="hand" class="hand"></section>
+
+      <section id="gameOver" class="game-over hidden">
+        <h2 id="winnerText"></h2>
+        <div id="standingsTable" class="standings-wrap"></div>
+        <button id="rematchBtn" class="primary hidden">Back to lobby</button>
+      </section>
+
+      <button id="leaveGame" class="ghost small">Leave game</button>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="client.js"></script>
+  </body>
+</html>
