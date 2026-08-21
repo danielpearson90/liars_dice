@@ -304,7 +304,10 @@ button.small { padding: 8px 12px; font-size: .85rem; }
 .hand.inert .pcard { filter: saturate(.8) brightness(.92); }
 .pcard.playable { cursor: pointer; }
 .pcard.playable:hover { transform: translateY(-10px); box-shadow: 0 8px 16px rgba(0, 0, 0, .5); }
-.pcard.illegal { opacity: .35; filter: grayscale(.5); cursor: not-allowed; }
+/* Dimmed with filters, never opacity: hand cards overlap and stack in z-order,
+   so a translucent card lets its lit neighbour bleed through and reads as
+   half-playable. */
+.pcard.illegal { filter: grayscale(.7) brightness(.62) contrast(.9); cursor: not-allowed; }
 
 .hand-cap {
   text-align: center; margin: 6px 0 2px;
