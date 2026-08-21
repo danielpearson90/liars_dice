@@ -1,8 +1,9 @@
 // Pure game engine for Estimation (speed-round variant).
 //
 // Core flow:
-//   - A standard 52-card deck is dealt evenly, `min(13, floor(52/n))` cards
-//     each; anything left over sits face-down, out of play for the round.
+//   - Hands grow: 5 cards each in round 1, one more every round after, until
+//     the deck can't go round again (13 cards, or 10 at a 5-player table).
+//     Whatever isn't dealt sits face-down, out of play for that round.
 //   - Trump follows a fixed cycle (No-trump, Spades, Hearts, Diamonds, Clubs)
 //     — there is no auction. Rounds = cycles * 5.
 //   - Each round: every player ESTIMATES how many tricks they'll take, in
@@ -36,9 +37,23 @@ export function clampCycles(n) {
   return Math.max(MIN_CYCLES, Math.min(MAX_CYCLES, n));
 }
 
-/** Cards dealt to each player: as close to a full 13-card hand as the table allows. */
-export function handSizeFor(playerCount) {
+/** Cards each player holds in the first round; hands grow from here. */
+export const STARTING_HAND = 5;
+
+/**
+ * The largest hand this table can be dealt: a full 13-card hand, or less when
+ * the deck can't go round that many times.
+ */
+export function maxHandFor(playerCount) {
   return Math.min(13, Math.floor(52 / playerCount));
+}
+
+/**
+ * Hands start at 5 cards and grow by one each round, stopping once the deck
+ * runs out — at 5 players that's 10 cards, otherwise 13.
+ */
+export function handSizeForRound(playerCount, roundIndex) {
+  return Math.min(STARTING_HAND + roundIndex, maxHandFor(playerCount));
 }
 
 /** Stable string id for a card, e.g. rank 14 of spades -> '14S'. */
@@ -124,7 +139,7 @@ export class Game {
     this.trump = TRUMP_CYCLE[roundIndex % TRUMP_CYCLE.length];
     const dealerIdx = roundIndex % n;
     this.dealerId = this.players[dealerIdx].id;
-    this.handSize = handSizeFor(n);
+    this.handSize = handSizeForRound(n, roundIndex);
 
     const deck = shuffle(buildDeck(), this.rng);
     this.dealtOut = 52 - this.handSize * n;

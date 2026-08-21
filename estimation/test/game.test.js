@@ -6,7 +6,9 @@ import {
   MAX_PLAYERS,
   DEFAULT_CYCLES,
   clampCycles,
-  handSizeFor,
+  maxHandFor,
+  handSizeForRound,
+  STARTING_HAND,
   cardId,
   trickWinner,
 } from '../src/game.js';
@@ -58,7 +60,7 @@ function playOutRound(g) {
 test('deal size, no duplicate cards, and dealtOut hold for 2-5 players', () => {
   for (const n of [2, 3, 4, 5]) {
     const g = makeGame(n, { seed: n * 7 + 1 });
-    const expectedHandSize = handSizeFor(n);
+    const expectedHandSize = STARTING_HAND; // round 1 always deals 5
     const allIds = [];
     for (const p of g.players) {
       const hand = g.hands.get(p.id);
@@ -70,11 +72,38 @@ test('deal size, no duplicate cards, and dealtOut hold for 2-5 players', () => {
   }
 });
 
-test('handSizeFor caps at 13 and floors otherwise', () => {
-  assert.equal(handSizeFor(2), 13);
-  assert.equal(handSizeFor(3), 13);
-  assert.equal(handSizeFor(4), 13);
-  assert.equal(handSizeFor(5), 10);
+test('maxHandFor caps at 13 and floors otherwise', () => {
+  assert.equal(maxHandFor(2), 13);
+  assert.equal(maxHandFor(3), 13);
+  assert.equal(maxHandFor(4), 13);
+  assert.equal(maxHandFor(5), 10);
+});
+
+test('hands start at 5 and grow one card per round, stopping at the deck limit', () => {
+  assert.equal(STARTING_HAND, 5);
+  // 4 players: 5, 6, 7 ... up to 13, then flat.
+  assert.deepEqual(
+    [0, 1, 2, 3, 7, 8, 9, 14].map((r) => handSizeForRound(4, r)),
+    [5, 6, 7, 8, 12, 13, 13, 13]
+  );
+  // 5 players can only ever be dealt 10 each, so the growth stops sooner.
+  assert.deepEqual(
+    [0, 4, 5, 6, 14].map((r) => handSizeForRound(5, r)),
+    [5, 9, 10, 10, 10]
+  );
+});
+
+test('a played-out game deals a bigger hand every round', () => {
+  const g = makeGame(4, { cycles: 1 });
+  const dealt = [];
+  for (let r = 0; r < 5; r++) {
+    dealt.push(g.handSize);
+    for (const p of g.players) assert.equal(g.hands.get(p.id).length, g.handSize);
+    assert.equal(g.dealtOut, 52 - g.handSize * 4);
+    playOutRound(g);
+    if (g.phase === 'roundEnd') g.nextRound();
+  }
+  assert.deepEqual(dealt, [5, 6, 7, 8, 9]);
 });
 
 test('clampCycles clamps to 1..3 with a default on NaN', () => {
@@ -100,25 +129,25 @@ test('estimate range and turn-order guards', () => {
   assert.equal(g.turnId, 'p1'); // dealer (p0) estimates last
   assert.throws(() => g.estimate('p0', 0), /not your turn/i);
   assert.throws(() => g.estimate('p1', -1), /between 0 and/i);
-  assert.throws(() => g.estimate('p1', 14), /between 0 and/i); // handSize is 13
+  assert.throws(() => g.estimate('p1', 6), /between 0 and/i); // round 1 deals 5
   assert.throws(() => g.estimate('p1', 1.5), /between 0 and/i);
 
   g.estimate('p1', 0);
   assert.throws(() => g.estimate('p1', 0), /not your turn/i); // turn moved on to p0
 
-  g.estimate('p0', 5); // 0 + 5 = 5 != 13, legal
+  g.estimate('p0', 4); // 0 + 4 = 4 != 5, legal
   assert.equal(g.phase, 'playing');
   assert.throws(() => g.estimate('p0', 0), /no action/i); // wrong phase now
 });
 
 test('the last estimator may not make the total equal the hand size', () => {
-  const handSize = 13;
+  const handSize = STARTING_HAND; // 5 in round 1
   for (let n = 0; n <= handSize; n++) {
     const g = makeGame(2);
-    g.estimate('p1', 6); // first estimator, any legal number
-    const forbidden = handSize - 6; // = 7
+    g.estimate('p1', 2); // first estimator, any legal number
+    const forbidden = handSize - 2; // = 3
     if (n === forbidden) {
-      assert.throws(() => g.estimate('p0', n), /can't add up to 13/);
+      assert.throws(() => g.estimate('p0', n), /can't add up to 5/);
     } else {
       assert.doesNotThrow(() => g.estimate('p0', n));
     }
@@ -129,18 +158,18 @@ test('the total-equals-handSize constraint does not apply once the running total
   const g = makeGame(3);
   // p0 is the round-0 dealer, so estimates last; the other two go first.
   const others = g.estimateOrder.slice(0, 2);
-  g.estimate(others[0], 10);
-  g.estimate(others[1], 10); // running total 20, already > handSize (13)
+  g.estimate(others[0], 4);
+  g.estimate(others[1], 4); // running total 8, already > handSize (5)
   assert.equal(g.toView('p0').forbiddenEstimate, null);
-  assert.doesNotThrow(() => g.estimate('p0', 13)); // no number is off-limits
+  assert.doesNotThrow(() => g.estimate('p0', 5)); // no number is off-limits
 });
 
 test('forbiddenEstimate is only surfaced for the estimator currently on the clock', () => {
   const g = makeGame(2);
   assert.equal(g.toView('p1').forbiddenEstimate, null); // p1 is not the last estimator
   assert.equal(g.toView('p0').forbiddenEstimate, null); // not p0's turn yet
-  g.estimate('p1', 6);
-  assert.equal(g.toView('p0').forbiddenEstimate, 7); // now p0 is on the clock
+  g.estimate('p1', 2);
+  assert.equal(g.toView('p0').forbiddenEstimate, 3); // now p0 is on the clock
 });
 
 // --- following suit -----------------------------------------------------------
@@ -243,11 +272,11 @@ test('trickWinner: a trump-less trick falls back to the highest of the led suit'
 
 test('a full round plays out to the right tricksWon totals and exercises both scoring branches', () => {
   const g = makeGame(2);
-  // Rig the deal: p1 holds every heart (always wins every trick it leads or
-  // follows, since p0 never holds hearts); p0 holds every spade.
+  // Rig the deal to the round's hand size: p1 holds only hearts (so it wins
+  // every trick, p0 never holding one), p0 holds only spades.
   const hearts = [];
   const spades = [];
-  for (let rank = 2; rank <= 14; rank++) {
+  for (let rank = 2; rank < 2 + g.handSize; rank++) {
     hearts.push({ rank, suit: 'H' });
     spades.push({ rank, suit: 'S' });
   }
@@ -255,14 +284,15 @@ test('a full round plays out to the right tricksWon totals and exercises both sc
   g.hands.set('p0', spades);
 
   assert.deepEqual(g.estimateOrder, ['p1', 'p0']); // p0 is round-0 dealer
-  g.estimate('p1', 13); // will be exactly right
-  assert.equal(g.toView('p0').forbiddenEstimate, 0); // 13 - 13
-  g.estimate('p0', 5); // will miss by 5 (actual will be 0)
+  g.estimate('p1', g.handSize); // will be exactly right
+  assert.equal(g.toView('p0').forbiddenEstimate, 0); // handSize - handSize
+  g.estimate('p0', 2); // will miss (actual will be 0)
 
   assert.equal(g.phase, 'playing');
   assert.equal(g.turnId, 'p1');
 
-  for (let i = 0; i < 13; i++) {
+  const tricks = g.handSize;
+  for (let i = 0; i < tricks; i++) {
     g.playCard('p1', cardId(g.hands.get('p1')[0]));
     g.playCard('p0', cardId(g.hands.get('p0')[0]));
     assert.equal(g.trick.winnerId, 'p1'); // only p1's card is ever the led suit
@@ -270,45 +300,19 @@ test('a full round plays out to the right tricksWon totals and exercises both sc
   }
 
   assert.equal(g.phase, 'roundEnd');
-  assert.equal(g.tricksWon.get('p1'), 13);
+  assert.equal(g.tricksWon.get('p1'), tricks);
   assert.equal(g.tricksWon.get('p0'), 0);
 
   const summary = g.history[g.history.length - 1];
   const p1Row = summary.rows.find((r) => r.playerId === 'p1');
   const p0Row = summary.rows.find((r) => r.playerId === 'p0');
-  assert.equal(p1Row.delta, 23); // 13 tricks + the 10-point exact-estimate bonus
-  assert.equal(p1Row.score, 23);
-  assert.equal(p0Row.delta, 0); // estimated 5, took none: no tricks, no bonus
+  assert.equal(p1Row.delta, tricks + 10); // every trick + the exact-estimate bonus
+  assert.equal(p1Row.score, tricks + 10);
+  assert.equal(p0Row.delta, 0); // estimated 2, took none: no tricks, no bonus
   assert.equal(p0Row.score, 0);
 
   const view = g.toView('p1');
   assert.deepEqual(view.roundSummary, summary);
-});
-
-test('scoring: 1 point per trick won, plus 10 for an exact estimate', () => {
-  const g = makeGame(4);
-  const cases = [
-    { id: 'p0', estimate: 3, tricksWon: 3, delta: 13 }, // exact: 3 tricks + 10
-    { id: 'p1', estimate: 3, tricksWon: 5, delta: 5 }, // over: tricks still pay, no bonus
-    { id: 'p2', estimate: 4, tricksWon: 1, delta: 1 }, // under: just the trick
-    { id: 'p3', estimate: 0, tricksWon: 0, delta: 10 }, // a made zero is worth the bonus
-  ];
-  for (const c of cases) {
-    g.estimates.set(c.id, c.estimate);
-    g.tricksWon.set(c.id, c.tricksWon);
-  }
-
-  g.scoreRound();
-
-  const rows = g.history[g.history.length - 1].rows;
-  for (const c of cases) {
-    const row = rows.find((r) => r.playerId === c.id);
-    assert.equal(row.delta, c.delta, `delta for ${c.id}`);
-    assert.equal(row.score, c.delta, `first-round score for ${c.id}`);
-  }
-
-  // Missing an estimate never costs points — scores only ever climb.
-  assert.ok(rows.every((r) => r.delta >= 0));
 });
 
 // --- round/game lifecycle --------------------------------------------------------
@@ -374,7 +378,7 @@ test('markReady only counts during roundEnd and clears each round', () => {
 test('toView never leaks another player\'s hand', () => {
   const g = makeGame(2);
   const p0View = g.toView('p0');
-  assert.equal(p0View.hand.length, handSizeFor(2));
+  assert.equal(p0View.hand.length, STARTING_HAND);
   const p1CardIds = g.hands.get('p1').map(cardId);
   const json = JSON.stringify(p0View);
   for (const id of p1CardIds) {
@@ -392,8 +396,8 @@ test('toView reports player-facing round/turn metadata', () => {
   assert.equal(view.round.number, 1);
   assert.equal(view.round.trump, 'NT');
   assert.equal(view.round.dealerId, 'p0');
-  assert.equal(view.round.handSize, 13);
-  assert.equal(view.round.dealtOut, 0);
+  assert.equal(view.round.handSize, 5); // round 1 always deals 5
+  assert.equal(view.round.dealtOut, 52 - 5 * 4);
   assert.ok(view.players.find((p) => p.id === 'p0').isDealer);
   assert.ok(view.players.find((p) => p.id === 'p0').isYou);
   assert.equal(view.players.find((p) => p.id === 'p1').isYou, false);

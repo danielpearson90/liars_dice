@@ -78,7 +78,7 @@ test('two clients can create, join, and start into the estimating phase', async 
     assert.equal(started.game.phase, 'estimating');
     assert.equal(started.game.round.dealerId, hostId);
     assert.equal(started.game.turnId, guestId);
-    assert.equal(started.game.hand.length, 13);
+    assert.equal(started.game.hand.length, 5); // round 1 deals 5
     assert.deepEqual(started.game.estimateOrder, [guestId, hostId]);
   } finally {
     host.close();
@@ -226,7 +226,7 @@ test('reconnect by token mid-game restores the same seat and hand', async () => 
     host.emit('start');
     const started = await guestTurn;
     const originalHand = started.game.hand;
-    assert.equal(originalHand.length, 13);
+    assert.equal(originalHand.length, 5); // round 1 deals 5
 
     // Guest drops...
     const hostSeesDisconnect = waitState(host, (s) =>

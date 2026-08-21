@@ -15,11 +15,14 @@ here:
 
 - **Players:** 2–5 (minimum 2 to start; room cap 5). No bots — everyone at the
   table is a human. Scoring is **individual**, not partnered.
-- **Deck & hand size:** a standard 52-card deck is dealt as evenly as
-  possible, `min(13, floor(52 / playerCount))` cards each — 13 for 2, 3, or 4
-  players, 10 for 5. Whatever's left over sits face-down, **out of play** for
-  the round (the UI shows "N cards out").
-- **Tricks per round** equal the hand size (13, or 10 at 5 players).
+- **Deck & hand size:** hands **grow every round**. Round 1 deals **5 cards**
+  each, round 2 deals 6, and so on — so early rounds are quick and tight, and
+  later ones are long enough to plan. Growth stops once the deck can't go
+  round again: **13 cards** at 2–4 players, **10** at 5. (With 3 cycles the
+  last rounds therefore sit at that maximum rather than growing past it.)
+  Whatever isn't dealt sits face-down, **out of play** for that round — the UI
+  shows "N cards out", which shrinks as the hands grow.
+- **Tricks per round** equal that round's hand size.
 - **Trump** follows a fixed cycle and is never auctioned: **No-trump, ♠, ♥,
   ♦, ♣**, repeating. The host picks **1, 2, or 3 cycles** = **5, 10, or 15
   rounds** (default **2 cycles / 10 rounds**).
