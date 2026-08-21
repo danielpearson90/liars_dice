@@ -36,10 +36,11 @@ here:
   wins the trick; if no trump was played (or it's a No-trump round), the
   highest card of the led suit wins. The winner leads the next trick. Aces
   are high, 2s are low.
-- **Scoring**, per player, per round:
-  - Estimate made **exactly** → **`+(10 + estimate)`**.
-  - Missed by any amount → **`−(10 × |estimate − tricks won|)`** (so a made
-    zero is worth 10 points, and every trick you're off by costs 10).
+- **Scoring**, per player, per round: **1 point per trick won**, plus a
+  **10-point bonus if your estimate was exactly right**. Missing your estimate
+  never costs you anything, so scores only ever climb — but the bonus is worth
+  more than most hands of tricks, so calling your hand right is what wins
+  games. A made zero scores 10.
 - **Game over** after the last round: the highest total wins. Equal totals
   **share** the win.
 

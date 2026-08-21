@@ -13,8 +13,8 @@
 //     highest trump (or, lacking any trump play, highest of the led suit)
 //     wins. Winner leads next. A completed trick sits on the table until the
 //     server sweeps it (a deliberate pause so a UI can show it).
-//   - Once every hand is empty the round is SCORED: an exact estimate pays
-//     `10 + estimate`; a miss costs `10 * |estimate - tricksWon|`.
+//   - Once every hand is empty the round is SCORED: 1 point per trick won,
+//     plus a 10-point bonus for an exact estimate. Scores never go down.
 //   - After the last round, highest total score wins (ties share the win).
 //
 // The engine is deterministic given an injected RNG, which keeps it testable.
@@ -258,8 +258,7 @@ export class Game {
     for (const p of this.players) {
       const estimate = this.estimates.get(p.id) ?? 0;
       const tricksWon = this.tricksWon.get(p.id) || 0;
-      const delta =
-        estimate === tricksWon ? 10 + estimate : -(10 * Math.abs(estimate - tricksWon));
+      const delta = tricksWon + (estimate === tricksWon ? 10 : 0);
       const score = (this.scores.get(p.id) || 0) + delta;
       this.scores.set(p.id, score);
       rows.push({ playerId: p.id, estimate, tricksWon, delta, score });

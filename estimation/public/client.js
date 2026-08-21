@@ -674,8 +674,10 @@ function renderRoundSummary(state) {
       tr.appendChild(td);
     });
     const deltaTd = document.createElement('td');
+    // Scores never fall, so sign says nothing — highlight the exact estimates,
+    // which are what the 10-point bonus (and the game) actually turns on.
     deltaTd.textContent = (row.delta > 0 ? '+' : '') + row.delta;
-    deltaTd.className = row.delta >= 0 ? 'good' : 'bad';
+    deltaTd.className = row.estimate === row.tricksWon ? 'good' : '';
     tr.appendChild(deltaTd);
     const scoreTd = document.createElement('td');
     scoreTd.textContent = row.score;

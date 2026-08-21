@@ -276,13 +276,39 @@ test('a full round plays out to the right tricksWon totals and exercises both sc
   const summary = g.history[g.history.length - 1];
   const p1Row = summary.rows.find((r) => r.playerId === 'p1');
   const p0Row = summary.rows.find((r) => r.playerId === 'p0');
-  assert.equal(p1Row.delta, 23); // exact: 10 + 13
+  assert.equal(p1Row.delta, 23); // 13 tricks + the 10-point exact-estimate bonus
   assert.equal(p1Row.score, 23);
-  assert.equal(p0Row.delta, -50); // missed by 5: -(10 * 5)
-  assert.equal(p0Row.score, -50);
+  assert.equal(p0Row.delta, 0); // estimated 5, took none: no tricks, no bonus
+  assert.equal(p0Row.score, 0);
 
   const view = g.toView('p1');
   assert.deepEqual(view.roundSummary, summary);
+});
+
+test('scoring: 1 point per trick won, plus 10 for an exact estimate', () => {
+  const g = makeGame(4);
+  const cases = [
+    { id: 'p0', estimate: 3, tricksWon: 3, delta: 13 }, // exact: 3 tricks + 10
+    { id: 'p1', estimate: 3, tricksWon: 5, delta: 5 }, // over: tricks still pay, no bonus
+    { id: 'p2', estimate: 4, tricksWon: 1, delta: 1 }, // under: just the trick
+    { id: 'p3', estimate: 0, tricksWon: 0, delta: 10 }, // a made zero is worth the bonus
+  ];
+  for (const c of cases) {
+    g.estimates.set(c.id, c.estimate);
+    g.tricksWon.set(c.id, c.tricksWon);
+  }
+
+  g.scoreRound();
+
+  const rows = g.history[g.history.length - 1].rows;
+  for (const c of cases) {
+    const row = rows.find((r) => r.playerId === c.id);
+    assert.equal(row.delta, c.delta, `delta for ${c.id}`);
+    assert.equal(row.score, c.delta, `first-round score for ${c.id}`);
+  }
+
+  // Missing an estimate never costs points — scores only ever climb.
+  assert.ok(rows.every((r) => r.delta >= 0));
 });
 
 // --- round/game lifecycle --------------------------------------------------------

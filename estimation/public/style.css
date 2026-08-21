@@ -379,7 +379,6 @@ button.small { padding: 8px 12px; font-size: .85rem; }
 }
 .summary-table tr.mine td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .summary-table td.good { color: var(--good); font-weight: 700; }
-.summary-table td.bad { color: var(--danger); font-weight: 700; }
 
 .ready-progress {
   width: 100%; max-width: 280px; height: 5px; margin: 0 auto 12px;
