@@ -18,11 +18,30 @@ The app is tiny and stateless — no database, games live in memory — so a
 
 ---
 
-## 1. Install this app's dependencies
+## 1. Get the code onto the box
 
-The repo clone at `/opt/liars_dice` already contains this app in its
-`estimation/` subdirectory, but each app has its **own** `package.json`, so
-dependencies are installed per app:
+This app lives in the `estimation/` subdirectory of the same repo. If it isn't
+on the server yet, `git pull` alone won't bring it — a pull only advances the
+branch you already have checked out, so it reports *Already up to date* and
+leaves you without an `estimation/` directory. Fetch and switch to the branch
+that carries it:
+
+```bash
+cd /opt/liars_dice
+sudo -u liarsdice git fetch origin
+sudo -u liarsdice git checkout claude/estimation-card-game-4ssv0r
+ls estimation          # DEPLOY.md, server.js, src, public, ...
+```
+
+That branch is a superset of the Liar's Dice branch — identical `server.js`,
+`src/`, `public/` and `package.json` — so switching to it does **not** change
+the Liar's Dice app or require restarting its service. (Once this work is
+merged into your default branch, a plain `git pull` is enough.)
+
+## 2. Install this app's dependencies
+
+Each app has its **own** `package.json`, so dependencies are installed per app —
+installing at the repo root does not cover this one:
 
 ```bash
 cd /opt/liars_dice/estimation
@@ -41,7 +60,7 @@ You should see `{"ok":true}`.
 
 ---
 
-## 2. Run it as a service
+## 3. Run it as a service
 
 The unit ships in this folder and is already set to port **3001**, so it sits
 alongside Liar's Dice on 3000 rather than fighting it for the port:
@@ -59,7 +78,7 @@ It now starts on boot and restarts if it crashes. On your LAN it's reachable at
 
 ---
 
-## 3. Give it a subdomain
+## 4. Give it a subdomain
 
 You need a domain managed by Cloudflare (free tier is fine). If you already
 have a tunnel running, skip to
@@ -87,7 +106,7 @@ with no extra config, and **no router ports are open**.
 
 Three steps, and both games share one tunnel and one container:
 
-1. **Install this app's deps and service** — sections 1 and 2 above.
+1. **Check out the branch, install deps, add the service** — sections 1–3 above.
 2. **Add an ingress rule** to `/etc/cloudflared/config.yml`. Order matters, and
    the catch-all `http_status:404` must stay **last**:
 
@@ -124,7 +143,7 @@ for `estimation.example.com` allowing specific emails or a one-time PIN.
 
 ```bash
 cd /opt/liars_dice
-sudo -u liarsdice git pull
+sudo -u liarsdice git pull            # pulls the branch you have checked out
 cd estimation && sudo -u liarsdice npm install --omit=dev
 systemctl restart estimation
 ```
