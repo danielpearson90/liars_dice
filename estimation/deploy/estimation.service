@@ -1,0 +1,39 @@
+# systemd unit for the Estimation server.
+# Install to /etc/systemd/system/estimation.service on your LXC/VM, then:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now estimation
+#   systemctl status estimation
+#   journalctl -u estimation -f
+#
+# Assumes the repo lives at /opt/liars_dice (so this app is in its
+# `estimation/` subdirectory) and runs as the `liarsdice` user. Port 3001 keeps
+# it clear of the Liar's Dice service on 3000, so both can run side by side.
+
+[Unit]
+Description=Estimation (online multiplayer card game)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=liarsdice
+Group=liarsdice
+WorkingDirectory=/opt/liars_dice/estimation
+ExecStart=/usr/bin/node server.js
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Restart=always
+RestartSec=3
+
+# --- light hardening (the app writes nothing to disk) ---
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

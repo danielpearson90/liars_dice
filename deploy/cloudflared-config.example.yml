@@ -1,13 +1,18 @@
 # Example Cloudflare Tunnel config.
-# Copy to /etc/cloudflared/config.yml and fill in your tunnel id + hostname.
+# Copy to /etc/cloudflared/config.yml and fill in your tunnel id + hostnames.
 #
 #   cloudflared tunnel login
-#   cloudflared tunnel create liars-dice          # prints the tunnel UUID
-#   cloudflared tunnel route dns liars-dice liarsdice.example.com
+#   cloudflared tunnel create games               # prints the tunnel UUID
+#   cloudflared tunnel route dns games liarsdice.example.com
+#   cloudflared tunnel route dns games estimation.example.com
 #   sudo cloudflared service install              # runs this config as a service
 #
 # Cloudflare proxies WebSockets by default, so Socket.IO works with no extra
 # settings. No router ports are opened — the tunnel dials out to Cloudflare.
+#
+# One tunnel can front both games in this repo: each subdomain maps to the
+# local port of its own systemd service. Run `cloudflared tunnel route dns`
+# once per hostname, and restart cloudflared after editing this file.
 
 tunnel: <YOUR-TUNNEL-UUID>
 credentials-file: /etc/cloudflared/<YOUR-TUNNEL-UUID>.json
@@ -15,5 +20,7 @@ credentials-file: /etc/cloudflared/<YOUR-TUNNEL-UUID>.json
 ingress:
   - hostname: liarsdice.example.com
     service: http://localhost:3000
+  - hostname: estimation.example.com
+    service: http://localhost:3001
   # Everything else gets a 404.
   - service: http_status:404

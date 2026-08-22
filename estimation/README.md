@@ -88,6 +88,13 @@ npm test
 
 The game needs a public URL. The quickest options:
 
+### Self-host on Proxmox with your own subdomain
+
+See **[DEPLOY.md](DEPLOY.md)** — a Debian LXC running the app under `systemd`,
+published at `estimation.example.com` through a Cloudflare Tunnel, with no
+router ports opened. If you already host Liar's Dice from this repo, the same
+container and the same tunnel serve both games.
+
 ### Deploy to Render (free)
 
 1. Push this repo to GitHub.
